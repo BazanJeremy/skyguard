@@ -1,0 +1,22 @@
+FROM python:3.12-slim
+
+LABEL maintainer="SkyGuard QA Portfolio"
+LABEL description="Electronic Flight Bag API simulator — attack surface for cybersecurity QA"
+
+WORKDIR /app
+
+# System deps (curl for healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Source
+COPY . .
+
+EXPOSE 5050
+
+CMD ["python", "-m", "flask", "--app", "src/simulators/efb_api/efb_app", "run", \
+     "--host", "0.0.0.0", "--port", "5050"]

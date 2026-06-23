@@ -1,0 +1,77 @@
+---
+# SkyGuard — Docker Compose
+# ===========================
+# Starts the full local environment in one command:
+#   docker compose up
+#
+# Services:
+#   efb-api      Flask EFB simulator (attack surface)
+#   rabbitmq     Message broker (event bus between tests and AI agents)
+#
+# Prerequisites:
+#   - Docker Desktop or Docker Engine + Compose v2
+#   - Copy .env.example to .env and set ANTHROPIC_API_KEY
+#
+# Quick start:
+#   cp .env.example .env          # add your API key
+#   docker compose up --build     # start everything
+#   open http://localhost:5050/health
+#   open http://localhost:15672   # RabbitMQ management UI (guest/guest)
+
+version: "3.9"
+
+services:
+
+  # ── EFB API simulator ──────────────────────────────────────────────────────
+  efb-api:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.efb
+    container_name: skyguard-efb
+    ports:
+      - "5050:5050"
+    environment:
+      FLASK_ENV: development
+      FLASK_APP: src/simulators/efb_api/efb_app.py
+      PYTHONPATH: /app
+    volumes:
+      - .:/app
+    networks:
+      - skyguard-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5050/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # ── RabbitMQ event broker ──────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: skyguard-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: skyguard
+      RABBITMQ_DEFAULT_PASS: skyguard
+      RABBITMQ_DEFAULT_VHOST: skyguard
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - skyguard-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+networks:
+  skyguard-net:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:
