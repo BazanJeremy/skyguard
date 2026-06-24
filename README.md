@@ -2,7 +2,7 @@
 
 > **Simulates the digital attack surface of a commercial aircraft and deploys three autonomous AI agents to detect threats, model risks with STRIDE, and map findings to EASA ED-202A — fully automated on every commit.**
 
-[![CI](https://github.com/your-username/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](./github/workflows/security-pipeline.yml)
+[![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
 [![Tests](https://img.shields.io/badge/tests-252%20passing%20%7C%206%20skipped-brightgreen?logo=pytest)]()
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
 [![AI](https://img.shields.io/badge/AI%20agents-3%20×%20Claude%20Sonnet-8B5CF6?logo=anthropic)](src/agents/)
@@ -26,7 +26,7 @@ The AI doesn't generate test boilerplate. It **reasons about security**: assigns
 ## 90-second demo
 
 ```bash
-git clone https://github.com/your-username/skyguard.git && cd skyguard
+git clone https://github.com/BazanJeremy/skyguard.git && cd skyguard
 pip install -r requirements.txt
 
 # Full AI pipeline — fallback mode (no API key needed)
