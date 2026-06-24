@@ -19,6 +19,8 @@ from __future__ import annotations
 import os
 import pytest
 
+pytestmark = pytest.mark.agents  # applied to all tests in this module (live tests override with skipif)
+
 from src.agents.pentest_narrator import (
     PentestNarrator,
     PentestReport,

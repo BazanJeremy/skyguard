@@ -10,6 +10,8 @@ Run: pytest tests/protocol/test_acars_parser.py -v
 
 import pytest
 
+pytestmark = pytest.mark.protocol  # applied to all tests in this module
+
 from src.simulators.acars_parser import (
     ACARSAttackBuilder,
     ACARSMessageBuilder,

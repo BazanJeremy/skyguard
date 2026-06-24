@@ -9,6 +9,8 @@ Run: pytest tests/protocol/ -v --tb=short
 
 import pytest
 
+pytestmark = pytest.mark.protocol  # applied to all tests in this module
+
 from src.simulators.arinc429_bus import (
     ARINC429Validator,
     ARINC429Word,

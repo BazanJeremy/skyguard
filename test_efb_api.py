@@ -20,13 +20,10 @@ Run: pytest tests/security/test_efb_api.py -v --tb=short
 from __future__ import annotations
 
 import json
-import sys
-import os
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
+pytestmark = pytest.mark.security  # applied to all tests in this module
 from src.simulators.efb_api.efb_app import app, USERS, FLIGHT_PLANS, ACTIVE_TOKENS
 
 
