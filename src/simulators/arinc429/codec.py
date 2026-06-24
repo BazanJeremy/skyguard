@@ -14,9 +14,7 @@ Reference: ARINC Specification 429-17 Part 1, Section 2.
 
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass
-from typing import Optional
 
 from .labels import DataFormat, LabelDef, SSM, get_label
 
@@ -25,24 +23,23 @@ from .labels import DataFormat, LabelDef, SSM, get_label
 # ARINC 429 Word
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Arinc429Word:
     """A decoded ARINC 429 32-bit word."""
+
     label_octal: str
     label_def: LabelDef
-    value: float             # Decoded engineering value
+    value: float  # Decoded engineering value
     ssm: SSM
-    sdi: int                 # 0-3
-    raw_word: int            # Original 32-bit integer
+    sdi: int  # 0-3
+    raw_word: int  # Original 32-bit integer
     parity_ok: bool
 
     @property
     def is_valid(self) -> bool:
         """True when word is valid: parity OK, SSM indicates normal data."""
-        return (
-            self.parity_ok
-            and self.ssm == SSM.PLUS_NORTH_EAST_RIGHT_TO
-        )
+        return self.parity_ok and self.ssm == SSM.PLUS_NORTH_EAST_RIGHT_TO
 
     @property
     def in_range(self) -> bool:
@@ -68,6 +65,7 @@ class Arinc429Word:
 # ─────────────────────────────────────────────────────────────────────────────
 # Encoder
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class Arinc429Encoder:
     """Encodes engineering values into ARINC 429 32-bit words."""
@@ -132,16 +130,16 @@ class Arinc429Encoder:
         data_bits = raw_int & 0x7FFFF  # 19 bits
 
         # Assemble word (bits numbered 1=LSB, 32=MSB in ARINC convention)
-        label_bits = self._octal_to_bits(label_octal)     # bits 1-8
-        sdi_bits = (sdi & 0b11) << 8                       # bits 9-10
-        data_shifted = data_bits << 10                      # bits 11-29
-        ssm_bits = (ssm.value & 0b11) << 29                # bits 30-31
+        label_bits = self._octal_to_bits(label_octal)  # bits 1-8
+        sdi_bits = (sdi & 0b11) << 8  # bits 9-10
+        data_shifted = data_bits << 10  # bits 11-29
+        ssm_bits = (ssm.value & 0b11) << 29  # bits 30-31
 
         word = label_bits | sdi_bits | data_shifted | ssm_bits
 
         # Compute and set parity (bit 32)
         parity = self._compute_odd_parity(word)
-        word |= (parity << 31)
+        word |= parity << 31
 
         return word
 
@@ -153,20 +151,21 @@ class Arinc429Encoder:
         sdi: int = 0,
     ) -> int:
         """Encode a discrete (bit flag) word."""
-        ld = get_label(label_octal)
+        get_label(label_octal)
         label_bits = self._octal_to_bits(label_octal)
         sdi_bits = (sdi & 0b11) << 8
         data_shifted = (bit_flags & 0x7FFFF) << 10
         ssm_bits = (ssm.value & 0b11) << 29
         word = label_bits | sdi_bits | data_shifted | ssm_bits
         parity = self._compute_odd_parity(word)
-        word |= (parity << 31)
+        word |= parity << 31
         return word
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Decoder
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class Arinc429Decoder:
     """Decodes 32-bit ARINC 429 words into engineering values."""
@@ -194,7 +193,7 @@ class Arinc429Decoder:
         label_octal = f"{label_decimal:03o}"
 
         sdi = (raw_word >> 8) & 0b11
-        data_raw = (raw_word >> 10) & 0x7FFFF   # 19 bits
+        data_raw = (raw_word >> 10) & 0x7FFFF  # 19 bits
         ssm_raw = (raw_word >> 29) & 0b11
         parity_ok = self._check_odd_parity(raw_word)
 

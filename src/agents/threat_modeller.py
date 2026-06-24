@@ -24,9 +24,8 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 import anthropic
 
@@ -35,55 +34,59 @@ import anthropic
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 class STRIDECategory(str, Enum):
-    SPOOFING              = "Spoofing"
-    TAMPERING             = "Tampering"
-    REPUDIATION           = "Repudiation"
+    SPOOFING = "Spoofing"
+    TAMPERING = "Tampering"
+    REPUDIATION = "Repudiation"
     INFORMATION_DISCLOSURE = "Information Disclosure"
-    DENIAL_OF_SERVICE     = "Denial of Service"
+    DENIAL_OF_SERVICE = "Denial of Service"
     ELEVATION_OF_PRIVILEGE = "Elevation of Privilege"
 
 
 @dataclass
 class GherkinStory:
     """Input: a User Story with Gherkin scenarios."""
-    feature:    str           # Feature title
-    as_a:       str           # Actor
-    i_want:     str           # Goal
-    so_that:    str           # Benefit
-    scenarios:  list[str]     # Raw Gherkin scenario text blocks
-    component:  str = ""      # System component (e.g. "EFB API", "ARINC 429 bus")
+
+    feature: str  # Feature title
+    as_a: str  # Actor
+    i_want: str  # Goal
+    so_that: str  # Benefit
+    scenarios: list[str]  # Raw Gherkin scenario text blocks
+    component: str = ""  # System component (e.g. "EFB API", "ARINC 429 bus")
 
 
 @dataclass
 class STRIDEThreat:
     """One identified STRIDE threat."""
-    id:           str
-    category:     STRIDECategory
-    title:        str
-    description:  str
-    asset:        str           # what is at risk
-    actor:        str           # who performs the attack
-    likelihood:   str           # low / medium / high
-    impact:       str           # low / medium / high
-    ed202a_ref:   str           # ED-202A objective reference
-    mitigations:  list[str]     # concrete defensive measures
-    test_cases:   list[str]     # suggested Pytest/Playwright test names
+
+    id: str
+    category: STRIDECategory
+    title: str
+    description: str
+    asset: str  # what is at risk
+    actor: str  # who performs the attack
+    likelihood: str  # low / medium / high
+    impact: str  # low / medium / high
+    ed202a_ref: str  # ED-202A objective reference
+    mitigations: list[str]  # concrete defensive measures
+    test_cases: list[str]  # suggested Pytest/Playwright test names
 
 
 @dataclass
 class STRIDEModel:
     """Full STRIDE threat model — output of the Threat Modeller agent."""
-    story_title:    str
-    component:      str
-    actors:         list[str]
-    assets:         list[str]
-    threats:        list[STRIDEThreat]
-    attack_trees:   list[dict]          # for high-severity threats
-    summary:        str
-    raw_response:   str
+
+    story_title: str
+    component: str
+    actors: list[str]
+    assets: list[str]
+    threats: list[STRIDEThreat]
+    attack_trees: list[dict]  # for high-severity threats
+    summary: str
+    raw_response: str
     prompt_version: str = "v1.0.0"
-    model:          str = "claude-sonnet-4-6"
+    model: str = "claude-sonnet-4-6"
 
 
 # ---------------------------------------------------------------------------
@@ -171,76 +174,153 @@ Generate the complete STRIDE threat model JSON.
 # ---------------------------------------------------------------------------
 
 _STRIDE_FALLBACK_THREATS = [
-    ("S", STRIDECategory.SPOOFING,
-     "Actor identity spoofing",
-     "An attacker impersonates a legitimate pilot or dispatcher to gain access.",
-     "User identity", "External attacker", "medium", "high",
-     "SO-2: Protect against identity spoofing",
-     ["Implement MFA for pilot login", "Validate token signature on every request"],
-     ["test_fake_token_rejected", "test_expired_token_rejected"]),
-    ("T", STRIDECategory.TAMPERING,
-     "Flight plan data tampering",
-     "An authenticated user modifies another pilot's flight plan via IDOR.",
-     "Flight plan data", "Malicious insider / compromised account", "high", "high",
-     "SO-3: Maintain data integrity",
-     ["Add ownership check before any plan mutation", "Log all write operations with user ID"],
-     ["test_pilot_cannot_modify_others_plan", "test_ownership_enforced_on_delete"]),
-    ("R", STRIDECategory.REPUDIATION,
-     "Audit log bypass",
-     "No request logging means actions cannot be attributed to a specific user.",
-     "Audit trail", "Any authenticated user", "medium", "medium",
-     "SO-4: Support non-repudiation",
-     ["Implement structured request logging (user_id, endpoint, timestamp, response_code)",
-      "Store logs in append-only storage"],
-     ["test_action_logged_on_flight_plan_create", "test_auth_attempt_logged"]),
-    ("I", STRIDECategory.INFORMATION_DISCLOSURE,
-     "Debug endpoint data exposure",
-     "Unauthenticated /debug endpoint exposes JWT secret, active tokens, and env vars.",
-     "JWT secret / session tokens", "External attacker", "high", "critical",
-     "SO-5: Prevent information disclosure",
-     ["Remove /debug endpoint from production", "Move sensitive config to environment vault"],
-     ["test_debug_returns_403_in_production", "test_jwt_secret_not_in_any_response"]),
-    ("D", STRIDECategory.DENIAL_OF_SERVICE,
-     "Brute-force authentication flood",
-     "No rate limiting on /auth/token allows credential stuffing at scale.",
-     "Authentication service", "External attacker", "high", "high",
-     "SO-6: Maintain availability",
-     ["Add rate limiting: max 5 attempts/minute per IP", "Implement progressive delay"],
-     ["test_rate_limit_returns_429_after_5_attempts", "test_lockout_after_threshold"]),
-    ("E", STRIDECategory.ELEVATION_OF_PRIVILEGE,
-     "Role escalation via token replay",
-     "Tokens do not encode role at issuance; role is re-fetched from mutable store.",
-     "Role-based access control", "Compromised user account", "low", "high",
-     "SO-2: Protect against privilege escalation",
-     ["Embed role in signed token payload", "Invalidate tokens on role change"],
-     ["test_role_change_invalidates_existing_token", "test_pilot_token_rejected_on_maintenance_route"]),
+    (
+        "S",
+        STRIDECategory.SPOOFING,
+        "Actor identity spoofing",
+        "An attacker impersonates a legitimate pilot or dispatcher to gain access.",
+        "User identity",
+        "External attacker",
+        "medium",
+        "high",
+        "SO-2: Protect against identity spoofing",
+        ["Implement MFA for pilot login", "Validate token signature on every request"],
+        ["test_fake_token_rejected", "test_expired_token_rejected"],
+    ),
+    (
+        "T",
+        STRIDECategory.TAMPERING,
+        "Flight plan data tampering",
+        "An authenticated user modifies another pilot's flight plan via IDOR.",
+        "Flight plan data",
+        "Malicious insider / compromised account",
+        "high",
+        "high",
+        "SO-3: Maintain data integrity",
+        [
+            "Add ownership check before any plan mutation",
+            "Log all write operations with user ID",
+        ],
+        ["test_pilot_cannot_modify_others_plan", "test_ownership_enforced_on_delete"],
+    ),
+    (
+        "R",
+        STRIDECategory.REPUDIATION,
+        "Audit log bypass",
+        "No request logging means actions cannot be attributed to a specific user.",
+        "Audit trail",
+        "Any authenticated user",
+        "medium",
+        "medium",
+        "SO-4: Support non-repudiation",
+        [
+            "Implement structured request logging (user_id, endpoint, timestamp, response_code)",
+            "Store logs in append-only storage",
+        ],
+        ["test_action_logged_on_flight_plan_create", "test_auth_attempt_logged"],
+    ),
+    (
+        "I",
+        STRIDECategory.INFORMATION_DISCLOSURE,
+        "Debug endpoint data exposure",
+        "Unauthenticated /debug endpoint exposes JWT secret, active tokens, and env vars.",
+        "JWT secret / session tokens",
+        "External attacker",
+        "high",
+        "critical",
+        "SO-5: Prevent information disclosure",
+        [
+            "Remove /debug endpoint from production",
+            "Move sensitive config to environment vault",
+        ],
+        ["test_debug_returns_403_in_production", "test_jwt_secret_not_in_any_response"],
+    ),
+    (
+        "D",
+        STRIDECategory.DENIAL_OF_SERVICE,
+        "Brute-force authentication flood",
+        "No rate limiting on /auth/token allows credential stuffing at scale.",
+        "Authentication service",
+        "External attacker",
+        "high",
+        "high",
+        "SO-6: Maintain availability",
+        [
+            "Add rate limiting: max 5 attempts/minute per IP",
+            "Implement progressive delay",
+        ],
+        [
+            "test_rate_limit_returns_429_after_5_attempts",
+            "test_lockout_after_threshold",
+        ],
+    ),
+    (
+        "E",
+        STRIDECategory.ELEVATION_OF_PRIVILEGE,
+        "Role escalation via token replay",
+        "Tokens do not encode role at issuance; role is re-fetched from mutable store.",
+        "Role-based access control",
+        "Compromised user account",
+        "low",
+        "high",
+        "SO-2: Protect against privilege escalation",
+        ["Embed role in signed token payload", "Invalidate tokens on role change"],
+        [
+            "test_role_change_invalidates_existing_token",
+            "test_pilot_token_rejected_on_maintenance_route",
+        ],
+    ),
 ]
 
 
 def _fallback_model(story: GherkinStory) -> STRIDEModel:
     threats = []
-    for i, (short, cat, title, desc, asset, actor, likelihood, impact, ed, mitigations, tests) in enumerate(
-        _STRIDE_FALLBACK_THREATS, start=1
-    ):
-        threats.append(STRIDEThreat(
-            id=f"T-{i:02d}",
-            category=cat,
-            title=title,
-            description=desc,
-            asset=asset,
-            actor=actor,
-            likelihood=likelihood,
-            impact=impact,
-            ed202a_ref=ed,
-            mitigations=mitigations,
-            test_cases=tests,
-        ))
+    for i, (
+        short,
+        cat,
+        title,
+        desc,
+        asset,
+        actor,
+        likelihood,
+        impact,
+        ed,
+        mitigations,
+        tests,
+    ) in enumerate(_STRIDE_FALLBACK_THREATS, start=1):
+        threats.append(
+            STRIDEThreat(
+                id=f"T-{i:02d}",
+                category=cat,
+                title=title,
+                description=desc,
+                asset=asset,
+                actor=actor,
+                likelihood=likelihood,
+                impact=impact,
+                ed202a_ref=ed,
+                mitigations=mitigations,
+                test_cases=tests,
+            )
+        )
 
     return STRIDEModel(
         story_title=story.feature,
         component=story.component or "EFB API",
-        actors=["Pilot", "Dispatcher", "Maintenance technician", "External attacker", "Malicious insider"],
-        assets=["Flight plan data", "User credentials", "JWT tokens", "Audit logs", "System configuration"],
+        actors=[
+            "Pilot",
+            "Dispatcher",
+            "Maintenance technician",
+            "External attacker",
+            "Malicious insider",
+        ],
+        assets=[
+            "Flight plan data",
+            "User credentials",
+            "JWT tokens",
+            "Audit logs",
+            "System configuration",
+        ],
         threats=threats,
         attack_trees=[
             {
@@ -249,13 +329,25 @@ def _fallback_model(story: GherkinStory) -> STRIDEModel:
                 "tree": {
                     "node": "Access any flight plan via IDOR",
                     "children": [
-                        {"node": "Obtain valid Bearer token (legitimate login or credential stuffing)", "children": []},
-                        {"node": "Enumerate plan IDs (sequential: fp001, fp002...)", "children": [
-                            {"node": "Use /debug to get all plan IDs without auth", "children": []}
-                        ]},
-                        {"node": "GET /flightplans/<id> — no ownership check → 200", "children": []},
-                    ]
-                }
+                        {
+                            "node": "Obtain valid Bearer token (legitimate login or credential stuffing)",
+                            "children": [],
+                        },
+                        {
+                            "node": "Enumerate plan IDs (sequential: fp001, fp002...)",
+                            "children": [
+                                {
+                                    "node": "Use /debug to get all plan IDs without auth",
+                                    "children": [],
+                                }
+                            ],
+                        },
+                        {
+                            "node": "GET /flightplans/<id> — no ownership check → 200",
+                            "children": [],
+                        },
+                    ],
+                },
             }
         ],
         summary=(
@@ -270,6 +362,7 @@ def _fallback_model(story: GherkinStory) -> STRIDEModel:
 # ---------------------------------------------------------------------------
 # Threat Modeller Agent
 # ---------------------------------------------------------------------------
+
 
 class ThreatModeller:
     """
@@ -289,10 +382,14 @@ class ThreatModeller:
         print(modeller.to_markdown(model))
     """
 
-    def __init__(self, api_key: str | None = None, model: str = "claude-sonnet-4-6") -> None:
+    def __init__(
+        self, api_key: str | None = None, model: str = "claude-sonnet-4-6"
+    ) -> None:
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        self._model   = model
-        self._client  = anthropic.Anthropic(api_key=self._api_key) if self._api_key else None
+        self._model = model
+        self._client = (
+            anthropic.Anthropic(api_key=self._api_key) if self._api_key else None
+        )
 
     @property
     def has_api_key(self) -> bool:
@@ -329,19 +426,21 @@ class ThreatModeller:
 
         threats = []
         for t in parsed.get("threats", []):
-            threats.append(STRIDEThreat(
-                id=t.get("id", "T-?"),
-                category=STRIDECategory(t.get("category", "Tampering")),
-                title=t.get("title", ""),
-                description=t.get("description", ""),
-                asset=t.get("asset", ""),
-                actor=t.get("actor", ""),
-                likelihood=t.get("likelihood", "medium"),
-                impact=t.get("impact", "medium"),
-                ed202a_ref=t.get("ed202a_ref", ""),
-                mitigations=t.get("mitigations", []),
-                test_cases=t.get("test_cases", []),
-            ))
+            threats.append(
+                STRIDEThreat(
+                    id=t.get("id", "T-?"),
+                    category=STRIDECategory(t.get("category", "Tampering")),
+                    title=t.get("title", ""),
+                    description=t.get("description", ""),
+                    asset=t.get("asset", ""),
+                    actor=t.get("actor", ""),
+                    likelihood=t.get("likelihood", "medium"),
+                    impact=t.get("impact", "medium"),
+                    ed202a_ref=t.get("ed202a_ref", ""),
+                    mitigations=t.get("mitigations", []),
+                    test_cases=t.get("test_cases", []),
+                )
+            )
 
         return STRIDEModel(
             story_title=story.feature,
@@ -386,7 +485,9 @@ class ThreatModeller:
                 continue
             lines += [f"### {cat}", ""]
             for t in cat_threats:
-                badge = f"`{t.likelihood.upper()} likelihood / {t.impact.upper()} impact`"
+                badge = (
+                    f"`{t.likelihood.upper()} likelihood / {t.impact.upper()} impact`"
+                )
                 lines += [
                     f"#### {t.id} — {t.title}",
                     "",

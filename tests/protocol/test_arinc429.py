@@ -9,12 +9,8 @@ Run: pytest tests/protocol/ -v --tb=short
 
 import pytest
 
-pytestmark = pytest.mark.protocol  # applied to all tests in this module
-
 from src.simulators.arinc429_bus import (
     ARINC429Validator,
-    ARINC429Word,
-    BusFrame,
     NormalFlightScenario,
     OutOfRangeInjector,
     ParityCorruptionInjector,
@@ -31,6 +27,8 @@ from src.simulators.arinc429_bus import (
     frame_to_bytes,
     _compute_parity,
 )
+
+pytestmark = pytest.mark.protocol  # applied to all tests in this module
 
 
 class TestParity:
@@ -53,13 +51,16 @@ class TestParity:
 
 
 class TestEncodeDecodeRoundtrip:
-    @pytest.mark.parametrize("label,data_raw,sdi,ssm", [
-        (0o101, 500,   SDI.ALL,    SSM.PLUS_NORTH_RIGHT_TO),
-        (0o203, 8750,  SDI.RCVR_1, SSM.PLUS_NORTH_RIGHT_TO),
-        (0o310, 16383, SDI.RCVR_2, SSM.FUNCTIONAL_TEST),
-        (0o324, 0,     SDI.RCVR_3, SSM.NO_COMPUTED_DATA),
-        (0o325, 1,     SDI.ALL,    SSM.FAILURE_WARNING),
-    ])
+    @pytest.mark.parametrize(
+        "label,data_raw,sdi,ssm",
+        [
+            (0o101, 500, SDI.ALL, SSM.PLUS_NORTH_RIGHT_TO),
+            (0o203, 8750, SDI.RCVR_1, SSM.PLUS_NORTH_RIGHT_TO),
+            (0o310, 16383, SDI.RCVR_2, SSM.FUNCTIONAL_TEST),
+            (0o324, 0, SDI.RCVR_3, SSM.NO_COMPUTED_DATA),
+            (0o325, 1, SDI.ALL, SSM.FAILURE_WARNING),
+        ],
+    )
     def test_roundtrip_fields(self, label, data_raw, sdi, ssm):
         word = encode_word(label, data_raw, sdi, ssm)
         decoded = decode_word(word.raw_word)
@@ -74,15 +75,18 @@ class TestEncodeDecodeRoundtrip:
 
 
 class TestBNREncoding:
-    @pytest.mark.parametrize("label,value", [
-        (0o101, 280.0),
-        (0o102, 0.78),
-        (0o203, 35000.0),
-        (0o310, 87.0),
-        (0o324, 2.5),
-        (0o325, -30.0),
-        (0o365, -56.0),
-    ])
+    @pytest.mark.parametrize(
+        "label,value",
+        [
+            (0o101, 280.0),
+            (0o102, 0.78),
+            (0o203, 35000.0),
+            (0o310, 87.0),
+            (0o324, 2.5),
+            (0o325, -30.0),
+            (0o365, -56.0),
+        ],
+    )
     def test_bnr_value_survives_roundtrip(self, label, value):
         word = encode_bnr_value(label, value)
         recovered = decode_bnr_value(word)

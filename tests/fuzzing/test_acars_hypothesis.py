@@ -17,15 +17,17 @@ import pytest
 from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
-pytestmark = pytest.mark.fuzzing  # applied to all tests in this module
-
 from src.simulators.acars_parser import (
     ACARSMessageBuilder,
     ACARSParser,
     ParseStatus,
     MAX_TEXT_LENGTH,
-    SOH, STX, ETX_LAST,
+    SOH,
+    STX,
+    ETX_LAST,
 )
+
+pytestmark = pytest.mark.fuzzing  # applied to all tests in this module
 
 
 parser = ACARSParser()
@@ -35,16 +37,17 @@ parser = ACARSParser()
 # Strategy helpers
 # ─────────────────────────────────────────────────────────────────
 
+
 # A valid-looking ACARS frame built from hypothesis-generated fields
 @st.composite
 def acars_frame(draw) -> bytes:
     """Generate a structurally plausible ACARS frame with random field values."""
-    mode     = draw(st.sampled_from(b"2."))
-    addr     = draw(st.binary(min_size=7, max_size=7))
-    ack      = draw(st.integers(min_value=0x20, max_value=0x7E))
-    label    = draw(st.binary(min_size=2, max_size=2))
+    mode = draw(st.sampled_from(b"2."))
+    addr = draw(st.binary(min_size=7, max_size=7))
+    ack = draw(st.integers(min_value=0x20, max_value=0x7E))
+    label = draw(st.binary(min_size=2, max_size=2))
     block_id = draw(st.integers(min_value=0x41, max_value=0x5A))
-    text     = draw(st.binary(min_size=0, max_size=300))
+    text = draw(st.binary(min_size=0, max_size=300))
 
     return (
         bytes([SOH, mode])
@@ -66,6 +69,7 @@ def arbitrary_bytes(draw) -> bytes:
 # ─────────────────────────────────────────────────────────────────
 # Properties
 # ─────────────────────────────────────────────────────────────────
+
 
 class TestACARSParserNeverCrashes:
     @given(data=arbitrary_bytes())
@@ -132,8 +136,8 @@ class TestACARSParserLengthEnforcement:
         FINDING: if this test fails, the parser is silently accepting
         oversized payloads — a potential buffer overflow vector.
         """
-        builder = ACARSMessageBuilder()
-        frame   = (
+        ACARSMessageBuilder()
+        frame = (
             bytes([SOH, ord("2")])
             + b"F-GKXA "
             + b"!"
@@ -159,7 +163,7 @@ class TestACARSParserLengthEnforcement:
         try:
             frame = builder.build("H1", text[:MAX_TEXT_LENGTH])
         except ValueError:
-            return   # builder's own validation caught it — acceptable
+            return  # builder's own validation caught it — acceptable
         result = parser.parse(frame)
         assert result.status == ParseStatus.OK, (
             f"Valid-length text rejected unexpectedly: {result.status} — {result.anomalies}"
@@ -176,9 +180,9 @@ class TestACARSParserIdemPotence:
         """
         result1 = parser.parse(frame)
         result2 = parser.parse(frame)
-        assert result1.status   == result2.status
-        assert result1.label    == result2.label
-        assert result1.text     == result2.text
+        assert result1.status == result2.status
+        assert result1.label == result2.label
+        assert result1.text == result2.text
         assert result1.anomalies == result2.anomalies
 
 
@@ -202,4 +206,4 @@ class TestACARSParserBatchConsistency:
         for frame, batch_msg in zip(frames, batch_results):
             individual_msg = parser.parse(frame)
             assert batch_msg.status == individual_msg.status
-            assert batch_msg.text   == individual_msg.text
+            assert batch_msg.text == individual_msg.text

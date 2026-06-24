@@ -33,54 +33,58 @@ from typing import Optional
 # Message type taxonomy
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class AcarsMessageType(str, Enum):
-    ATIS          = "ATIS"           # Automatic Terminal Info Service
-    METAR         = "METAR"          # Meteorological report
-    PDC           = "PDC"            # Pre-Departure Clearance
-    FUEL          = "FUEL"           # Fuel uplift order
-    OOOI          = "OOOI"           # Out/Off/On/In event
-    FREE_TEXT     = "FREE_TEXT"      # Crew free text message
+    ATIS = "ATIS"  # Automatic Terminal Info Service
+    METAR = "METAR"  # Meteorological report
+    PDC = "PDC"  # Pre-Departure Clearance
+    FUEL = "FUEL"  # Fuel uplift order
+    OOOI = "OOOI"  # Out/Off/On/In event
+    FREE_TEXT = "FREE_TEXT"  # Crew free text message
     ATC_CLEARANCE = "ATC_CLEARANCE"  # ATC route clearance (CPDLC-lite)
-    UNKNOWN       = "UNKNOWN"
+    UNKNOWN = "UNKNOWN"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Parsed message models
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AcarsHeader:
     """ARINC 618 message header fields."""
-    mode:        str   # Single character: '2' (air-ground) or '.' etc.
-    aircraft_id: str   # 7-char ICAO aircraft registration (e.g. "FHBXA")
-    technical_ack: str # '!' = no ack, space = ack required
-    label:       str   # 2-char message label (e.g. "H1" = free text)
-    block_id:    str   # 1-char sequence counter (0-9 A-Z)
-    msg_number:  str   # 4-char message number (e.g. "M01A")
-    flight_id:   str   # 6-char flight number (e.g. "AF447 ")
+
+    mode: str  # Single character: '2' (air-ground) or '.' etc.
+    aircraft_id: str  # 7-char ICAO aircraft registration (e.g. "FHBXA")
+    technical_ack: str  # '!' = no ack, space = ack required
+    label: str  # 2-char message label (e.g. "H1" = free text)
+    block_id: str  # 1-char sequence counter (0-9 A-Z)
+    msg_number: str  # 4-char message number (e.g. "M01A")
+    flight_id: str  # 6-char flight number (e.g. "AF447 ")
 
 
 @dataclass
 class AcarsMessage:
     """A fully parsed ACARS message."""
-    raw:         str
-    header:      AcarsHeader
-    msg_type:    AcarsMessageType
-    body:        str
-    checksum:    Optional[str]
-    is_valid:    bool
+
+    raw: str
+    header: AcarsHeader
+    msg_type: AcarsMessageType
+    body: str
+    checksum: Optional[str]
+    is_valid: bool
     parse_errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
             "aircraft_id": self.header.aircraft_id,
-            "flight_id":   self.header.flight_id.strip(),
-            "label":       self.header.label,
-            "msg_type":    self.msg_type.value,
+            "flight_id": self.header.flight_id.strip(),
+            "label": self.header.label,
+            "msg_type": self.msg_type.value,
             "body_length": len(self.body),
             "body_preview": self.body[:80],
-            "checksum":    self.checksum,
-            "is_valid":    self.is_valid,
+            "checksum": self.checksum,
+            "is_valid": self.is_valid,
             "parse_errors": self.parse_errors,
         }
 
@@ -125,7 +129,7 @@ def _classify(label: str, body: str) -> AcarsMessageType:
 # Minimum message length: mode(1) + acid(7) + ack(1) + label(2) + block(1) +
 #                         msgnum(4) + flight(6) = 22 chars before body
 _MIN_HEADER_LEN = 22
-_MAX_BODY_LEN   = 220   # ARINC 618 §5.1: max 220 characters per message
+_MAX_BODY_LEN = 220  # ARINC 618 §5.1: max 220 characters per message
 
 # Characters permitted in aircraft registration (ICAO Doc 8585)
 _ACID_PATTERN = re.compile(r"^[A-Z0-9\-]{2,7}$")
@@ -144,8 +148,8 @@ class AcarsParser:
 
     def __init__(self, verify_checksum: bool = False) -> None:
         self.verify_checksum = verify_checksum
-        self._parse_count    = 0
-        self._error_count    = 0
+        self._parse_count = 0
+        self._error_count = 0
 
     def parse(self, raw: str) -> AcarsMessage:
         """
@@ -164,17 +168,19 @@ class AcarsParser:
         # ── Guard: minimum length ─────────────────────────────────────────
         if len(raw) < _MIN_HEADER_LEN:
             self._error_count += 1
-            return self._error_message(raw, f"Message too short: {len(raw)} < {_MIN_HEADER_LEN}")
+            return self._error_message(
+                raw, f"Message too short: {len(raw)} < {_MIN_HEADER_LEN}"
+            )
 
         # ── Extract header fields ─────────────────────────────────────────
         try:
-            mode         = raw[0]
-            aircraft_id  = raw[1:8].strip()
+            mode = raw[0]
+            aircraft_id = raw[1:8].strip()
             technical_ack = raw[8]
-            label        = raw[9:11]
-            block_id     = raw[11]
-            msg_number   = raw[12:16]
-            flight_id    = raw[16:22]
+            label = raw[9:11]
+            block_id = raw[11]
+            msg_number = raw[12:16]
+            flight_id = raw[16:22]
         except IndexError as exc:
             self._error_count += 1
             return self._error_message(raw, f"Header extraction failed: {exc}")
@@ -244,8 +250,13 @@ class AcarsParser:
     @staticmethod
     def _error_message(raw: str, reason: str) -> AcarsMessage:
         dummy_header = AcarsHeader(
-            mode="?", aircraft_id="UNKNOWN", technical_ack="?",
-            label="??", block_id="?", msg_number="????", flight_id="??????",
+            mode="?",
+            aircraft_id="UNKNOWN",
+            technical_ack="?",
+            label="??",
+            block_id="?",
+            msg_number="????",
+            flight_id="??????",
         )
         return AcarsMessage(
             raw=raw,
@@ -263,8 +274,7 @@ class AcarsParser:
             "total_parsed": self._parse_count,
             "total_errors": self._error_count,
             "error_rate": (
-                self._error_count / self._parse_count
-                if self._parse_count > 0 else 0.0
+                self._error_count / self._parse_count if self._parse_count > 0 else 0.0
             ),
         }
 
@@ -273,16 +283,21 @@ class AcarsParser:
 # Message factory — generates realistic ACARS messages for simulation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class AcarsMessageFactory:
     """Generates realistic ACARS messages for bus simulation."""
 
     @staticmethod
-    def free_text(aircraft: str = "FHBXA1", flight: str = "AF447 ", text: str = "") -> str:
+    def free_text(
+        aircraft: str = "FHBXA1", flight: str = "AF447 ", text: str = ""
+    ) -> str:
         body = text or "CREW MSG: REQUESTING WEATHER UPDATE FOR DEST"
         return f"2{aircraft:<7}!H10M01A{flight}{body}"
 
     @staticmethod
-    def oooi_off(aircraft: str = "FHBXA1", flight: str = "AF447 ", fuel_kg: int = 18500) -> str:
+    def oooi_off(
+        aircraft: str = "FHBXA1", flight: str = "AF447 ", fuel_kg: int = 18500
+    ) -> str:
         body = f"QS OFF/0830 FUEL/{fuel_kg:05d}"
         return f"2{aircraft:<7}!QS0O01A{flight}{body}"
 
@@ -302,6 +317,8 @@ class AcarsMessageFactory:
         return f"2{aircraft:<7}!700M03A{flight}{body}"
 
     @staticmethod
-    def fuel_order(aircraft: str = "FHBXA1", flight: str = "AF447 ", uplift_kg: int = 22000) -> str:
+    def fuel_order(
+        aircraft: str = "FHBXA1", flight: str = "AF447 ", uplift_kg: int = 22000
+    ) -> str:
         body = f"FUEL UPLIFT REQ {uplift_kg:05d}KG LFPG GATE B32"
         return f"2{aircraft:<7}!FN0M04A{flight}{body}"

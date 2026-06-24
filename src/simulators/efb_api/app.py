@@ -23,13 +23,10 @@ ZAP and Pytest+HTTPX tests target these endpoints.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import time
-from dataclasses import dataclass
-from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 from flask import Flask, jsonify, request, Response
 
@@ -69,17 +66,20 @@ _AUDIT_LOG: list[dict] = []
 
 
 def _audit(event: str, data: dict) -> None:
-    _AUDIT_LOG.append({
-        "timestamp": time.time(),
-        "event": event,
-        "remote_addr": request.remote_addr,
-        "data": data,
-    })
+    _AUDIT_LOG.append(
+        {
+            "timestamp": time.time(),
+            "event": event,
+            "remote_addr": request.remote_addr,
+            "data": data,
+        }
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _json_response(data: Any, status: int = 200) -> Response:
     return jsonify(data), status
@@ -93,6 +93,7 @@ def _error(message: str, status: int = 400) -> Response:
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @app.route("/health")
 def health() -> Response:
     """Health check — used by CI to wait for server readiness."""
@@ -100,6 +101,7 @@ def health() -> Response:
 
 
 # ── VULNERABILITY 1: No authentication on flight plan endpoint ───────────────
+
 
 @app.route("/api/v1/flight-plan/<flight_id>", methods=["GET"])
 def get_flight_plan(flight_id: str) -> Response:
@@ -131,6 +133,7 @@ def list_flight_plans() -> Response:
 
 # ── VULNERABILITY 2: No input length limit on crew message ──────────────────
 
+
 @app.route("/api/v1/crew-message", methods=["POST"])
 def post_crew_message() -> Response:
     """
@@ -144,8 +147,8 @@ def post_crew_message() -> Response:
     """
     data = request.get_json(silent=True) or {}
     flight_id = data.get("flight_id", "")
-    message   = data.get("message", "")
-    priority  = data.get("priority", "ROUTINE")
+    message = data.get("message", "")
+    priority = data.get("priority", "ROUTINE")
 
     if not flight_id or not message:
         return _error("'flight_id' and 'message' are required.")
@@ -154,7 +157,7 @@ def post_crew_message() -> Response:
     entry = {
         "id": len(_CREW_MESSAGES) + 1,
         "flight_id": flight_id,
-        "message": message,         # raw — unsanitised
+        "message": message,  # raw — unsanitised
         "priority": priority,
         "timestamp": time.time(),
         "status": "QUEUED",
@@ -177,6 +180,7 @@ def list_crew_messages() -> Response:
 
 # ── VULNERABILITY 3: Business logic flaw in fuel endpoint ───────────────────
 
+
 @app.route("/api/v1/fuel/uplift", methods=["POST"])
 def request_fuel_uplift() -> Response:
     """
@@ -186,10 +190,10 @@ def request_fuel_uplift() -> Response:
     A negative fuel order could confuse the fuel management system into
     reporting a false total, or be used to deny fuel to the aircraft.
     """
-    data       = request.get_json(silent=True) or {}
-    flight_id  = data.get("flight_id", "")
-    uplift_kg  = data.get("uplift_kg")
-    fuel_type  = data.get("fuel_type", "JET-A1")
+    data = request.get_json(silent=True) or {}
+    flight_id = data.get("flight_id", "")
+    uplift_kg = data.get("uplift_kg")
+    fuel_type = data.get("fuel_type", "JET-A1")
 
     if not flight_id or uplift_kg is None:
         return _error("'flight_id' and 'uplift_kg' are required.")
@@ -198,7 +202,7 @@ def request_fuel_uplift() -> Response:
     entry = {
         "id": len(_FUEL_LOG) + 1,
         "flight_id": flight_id,
-        "uplift_kg": uplift_kg,     # may be negative!
+        "uplift_kg": uplift_kg,  # may be negative!
         "fuel_type": fuel_type,
         "timestamp": time.time(),
         "status": "PENDING",
@@ -237,19 +241,23 @@ def get_chart(chart_name: str) -> Response:
     if not ALLOWED_CHART_RE.match(chart_name):
         return _error(
             f"Invalid chart name: {chart_name!r}. "
-            "Only alphanumeric filenames with .pdf/.png/.svg allowed.", 400
+            "Only alphanumeric filenames with .pdf/.png/.svg allowed.",
+            400,
         )
 
     # In simulation, we don't serve real files
-    return _json_response({
-        "chart_name": chart_name,
-        "url": f"/static/charts/{chart_name}",
-        "format": chart_name.rsplit(".", 1)[-1].upper(),
-        "size_bytes": 204800,
-    })
+    return _json_response(
+        {
+            "chart_name": chart_name,
+            "url": f"/static/charts/{chart_name}",
+            "format": chart_name.rsplit(".", 1)[-1].upper(),
+            "size_bytes": 204800,
+        }
+    )
 
 
 # ── Status and audit ─────────────────────────────────────────────────────────
+
 
 @app.route("/api/v1/status", methods=["GET"])
 def get_status() -> Response:
@@ -257,14 +265,16 @@ def get_status() -> Response:
     EFB system status.
     VULNERABILITY: Exposes internal version string → fingerprinting.
     """
-    return _json_response({
-        "efb_software": "SkyEFB",
-        "version": "2.4.1-beta",        # version disclosure
-        "os": "Linux 5.15.0",           # OS disclosure
-        "uptime_seconds": int(time.time() % 86400),
-        "flights_loaded": len(_FLIGHT_PLANS),
-        "messages_queued": len(_CREW_MESSAGES),
-    })
+    return _json_response(
+        {
+            "efb_software": "SkyEFB",
+            "version": "2.4.1-beta",  # version disclosure
+            "os": "Linux 5.15.0",  # OS disclosure
+            "uptime_seconds": int(time.time() % 86400),
+            "flights_loaded": len(_FLIGHT_PLANS),
+            "messages_queued": len(_CREW_MESSAGES),
+        }
+    )
 
 
 @app.route("/api/v1/audit", methods=["GET"])
@@ -279,6 +289,7 @@ def get_audit_log() -> Response:
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def create_app() -> Flask:
     """Factory for use in tests (avoids port conflicts)."""

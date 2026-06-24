@@ -19,17 +19,18 @@ Run: pytest tests/security/test_efb_api.py -v --tb=short
 
 from __future__ import annotations
 
-import json
 
 import pytest
 
+from src.simulators.efb_api.efb_app import app, ACTIVE_TOKENS
+
 pytestmark = pytest.mark.security  # applied to all tests in this module
-from src.simulators.efb_api.efb_app import app, USERS, FLIGHT_PLANS, ACTIVE_TOKENS
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def client():
@@ -82,6 +83,7 @@ def auth_headers(token: str) -> dict:
 # 1. Health & public endpoints — contract tests
 # ---------------------------------------------------------------------------
 
+
 class TestPublicEndpoints:
     def test_health_returns_200(self, client):
         resp = client.get("/health")
@@ -120,6 +122,7 @@ class TestPublicEndpoints:
 # ---------------------------------------------------------------------------
 # 2. Authentication — contract tests
 # ---------------------------------------------------------------------------
+
 
 class TestAuthentication:
     def test_valid_credentials_return_200(self, client):
@@ -189,9 +192,9 @@ class TestAuthentication:
 
     def test_each_user_role_is_correct(self, client):
         credentials = [
-            ("capt_dubois",  "Fl1ghts1m!",  "pilot"),
-            ("fo_martin",    "C0p1lot99",   "pilot"),
-            ("disp_lambert", "D1spatch#",   "dispatcher"),
+            ("capt_dubois", "Fl1ghts1m!", "pilot"),
+            ("fo_martin", "C0p1lot99", "pilot"),
+            ("disp_lambert", "D1spatch#", "dispatcher"),
             ("maint_torres", "M41nt3n@nce", "maintenance"),
         ]
         for username, password, expected_role in credentials:
@@ -200,12 +203,15 @@ class TestAuthentication:
                 json={"username": username, "password": password},
             )
             assert resp.status_code == 200
-            assert resp.get_json()["role"] == expected_role, f"Role mismatch for {username}"
+            assert resp.get_json()["role"] == expected_role, (
+                f"Role mismatch for {username}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # 3. Flight plan endpoints — contract tests
 # ---------------------------------------------------------------------------
+
 
 class TestFlightPlanContract:
     def test_list_returns_200(self, client, pilot_token):
@@ -245,8 +251,15 @@ class TestFlightPlanContract:
             "/api/v1/flightplans/fp001", headers=auth_headers(pilot_token)
         ).get_json()
         required_fields = {
-            "id", "owner_id", "callsign", "departure",
-            "destination", "route", "cruise_fl", "fuel_kg", "created_at",
+            "id",
+            "owner_id",
+            "callsign",
+            "departure",
+            "destination",
+            "route",
+            "cruise_fl",
+            "fuel_kg",
+            "created_at",
         }
         assert required_fields.issubset(data.keys())
 
@@ -335,7 +348,9 @@ class TestFlightPlanContract:
         )
         assert resp.status_code == 404
 
-    def test_pilot_cannot_delete_others_plan(self, client, pilot_token, dispatcher_token):
+    def test_pilot_cannot_delete_others_plan(
+        self, client, pilot_token, dispatcher_token
+    ):
         # fp002 belongs to fo_martin (u002), not capt_dubois (u001)
         resp = client.delete(
             "/api/v1/flightplans/fp002",
@@ -347,6 +362,7 @@ class TestFlightPlanContract:
 # ---------------------------------------------------------------------------
 # 4. Weather endpoints — contract tests
 # ---------------------------------------------------------------------------
+
 
 class TestWeatherContract:
     def test_get_metar_lfpg_returns_200(self, client, pilot_token):
@@ -379,6 +395,7 @@ class TestWeatherContract:
 # ---------------------------------------------------------------------------
 # 5. Performance endpoint — contract tests
 # ---------------------------------------------------------------------------
+
 
 class TestPerformanceContract:
     def test_takeoff_returns_200(self, client, pilot_token):
@@ -419,6 +436,7 @@ class TestPerformanceContract:
 # ---------------------------------------------------------------------------
 # 6. Maintenance endpoint — role access control
 # ---------------------------------------------------------------------------
+
 
 class TestMaintenanceRBAC:
     def test_maintenance_role_returns_200(self, client, maintenance_token):
@@ -467,6 +485,7 @@ class TestMaintenanceRBAC:
 # 7. Intentional weakness W1 — no rate limiting on /auth/token
 # ---------------------------------------------------------------------------
 
+
 class TestW1NoRateLimiting:
     def test_repeated_auth_attempts_all_return_401(self, client):
         """
@@ -500,7 +519,7 @@ class TestW1NoRateLimiting:
         credential_list = [
             ("capt_dubois", "wrong1"),
             ("capt_dubois", "wrong2"),
-            ("capt_dubois", "Fl1ghts1m!"),   # correct — simulates stuffing hit
+            ("capt_dubois", "Fl1ghts1m!"),  # correct — simulates stuffing hit
         ]
         results = []
         for username, password in credential_list:
@@ -517,6 +536,7 @@ class TestW1NoRateLimiting:
 # ---------------------------------------------------------------------------
 # 8. Intentional weakness W2 — hardcoded weak JWT secret
 # ---------------------------------------------------------------------------
+
 
 class TestW2HardcodedSecret:
     def test_debug_endpoint_exposes_jwt_secret(self, client):
@@ -544,6 +564,7 @@ class TestW2HardcodedSecret:
 # 9. Intentional weakness W3 — IDOR on flight plans
 # ---------------------------------------------------------------------------
 
+
 class TestW3IDOR:
     def test_pilot_can_access_other_pilots_plan(self, client, pilot_token):
         """
@@ -566,7 +587,7 @@ class TestW3IDOR:
             headers=auth_headers(pilot_token),
         ).get_json()
         # capt_dubois should NOT see fo_martin's transatlantic route
-        assert data["owner_id"] == "u002"   # confirms cross-ownership access
+        assert data["owner_id"] == "u002"  # confirms cross-ownership access
         assert "route" in data
         assert "fuel_kg" in data
 
@@ -582,12 +603,15 @@ class TestW3IDOR:
                 accessible.append(plan_id)
 
         # Pilot can access both plans despite only owning fp001
-        assert "fp002" in accessible, "W3: enumeration across ownership boundaries confirmed"
+        assert "fp002" in accessible, (
+            "W3: enumeration across ownership boundaries confirmed"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 10. Intentional weakness W4 — unauthenticated debug endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestW4DebugEndpoint:
     def test_debug_accessible_without_auth(self, client):
@@ -628,6 +652,7 @@ class TestW4DebugEndpoint:
 # ---------------------------------------------------------------------------
 # 11. Intentional weakness W5 — stack traces in error responses
 # ---------------------------------------------------------------------------
+
 
 class TestW5InformationDisclosure:
     def test_health_exposes_hostname(self, client):
@@ -679,13 +704,14 @@ class TestW5InformationDisclosure:
             "/api/v1/maintenance/systems",
             headers=auth_headers(pilot_token),
         ).get_json()
-        assert "required_role" in data   # leaks required permission
-        assert "your_role" in data       # leaks caller's current role
+        assert "required_role" in data  # leaks required permission
+        assert "your_role" in data  # leaks caller's current role
 
 
 # ---------------------------------------------------------------------------
 # 12. Injection & fuzzing attack scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestInjectionAttacks:
     def test_sql_injection_in_plan_id(self, client, pilot_token):

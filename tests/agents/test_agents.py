@@ -19,8 +19,6 @@ from __future__ import annotations
 import os
 import pytest
 
-pytestmark = pytest.mark.agents  # applied to all tests in this module (live tests override with skipif)
-
 from src.agents.pentest_narrator import (
     PentestNarrator,
     PentestReport,
@@ -39,49 +37,64 @@ from src.agents.compliance_mapper import (
     ComplianceGap,
 )
 
+pytestmark = (
+    pytest.mark.agents
+)  # applied to all tests in this module (live tests override with skipif)
+
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def five_findings() -> list[SecurityFinding]:
     """The canonical five EFB weaknesses — used across all agent tests."""
     return [
         SecurityFinding(
-            id="W1", title="No rate limiting on auth endpoint",
+            id="W1",
+            title="No rate limiting on auth endpoint",
             description="POST /auth/token accepts unlimited requests without throttling.",
             evidence="TestW1: 100 sequential attempts, 0 HTTP 429 responses returned.",
             owasp_ref="A07:2021 — Identification and Authentication Failures",
-            severity=Severity.HIGH, endpoint="/api/v1/auth/token",
+            severity=Severity.HIGH,
+            endpoint="/api/v1/auth/token",
         ),
         SecurityFinding(
-            id="W2", title="Hardcoded weak JWT secret",
+            id="W2",
+            title="Hardcoded weak JWT secret",
             description="JWT_SECRET is hardcoded as 'skyguard-dev-secret-2024' and exposed via /debug.",
             evidence="TestW2: GET /debug returns jwt_secret in plaintext without authentication.",
             owasp_ref="A02:2021 — Cryptographic Failures",
-            severity=Severity.CRITICAL, endpoint="/api/v1/debug",
+            severity=Severity.CRITICAL,
+            endpoint="/api/v1/debug",
         ),
         SecurityFinding(
-            id="W3", title="IDOR — no ownership check on flight plans",
+            id="W3",
+            title="IDOR — no ownership check on flight plans",
             description="Any authenticated pilot can read any other pilot's flight plan by ID.",
             evidence="TestW3: capt_dubois (u001) reads fp002 owned by fo_martin (u002) → 200.",
             owasp_ref="A01:2021 — Broken Access Control",
-            severity=Severity.HIGH, endpoint="/api/v1/flightplans/<id>",
+            severity=Severity.HIGH,
+            endpoint="/api/v1/flightplans/<id>",
         ),
         SecurityFinding(
-            id="W4", title="Unauthenticated debug endpoint",
+            id="W4",
+            title="Unauthenticated debug endpoint",
             description="GET /api/v1/debug returns active tokens, usernames, env vars, and JWT secret without any auth.",
             evidence="TestW4: GET /debug without Authorization header → 200 with full system state.",
             owasp_ref="A05:2021 — Security Misconfiguration",
-            severity=Severity.CRITICAL, endpoint="/api/v1/debug",
+            severity=Severity.CRITICAL,
+            endpoint="/api/v1/debug",
         ),
         SecurityFinding(
-            id="W5", title="Stack traces and system info in responses",
+            id="W5",
+            title="Stack traces and system info in responses",
             description="Error responses expose Python version, hostname, and full tracebacks.",
             evidence="TestW5: /health leaks hostname; /version leaks Python version; 500s include traceback.",
             owasp_ref="A09:2021 — Security Logging and Monitoring Failures",
-            severity=Severity.MEDIUM, endpoint="global",
+            severity=Severity.MEDIUM,
+            endpoint="global",
         ),
     ]
 
@@ -124,7 +137,8 @@ Scenario: Pilot updates fuel load before departure
 def single_finding() -> list[SecurityFinding]:
     return [
         SecurityFinding(
-            id="W4", title="Unauthenticated debug endpoint",
+            id="W4",
+            title="Unauthenticated debug endpoint",
             description="Debug endpoint accessible without credentials.",
             evidence="GET /debug → 200 without token.",
             severity=Severity.CRITICAL,
@@ -135,6 +149,7 @@ def single_finding() -> list[SecurityFinding]:
 # ---------------------------------------------------------------------------
 # PentestNarrator — contract tests
 # ---------------------------------------------------------------------------
+
 
 class TestPentestNarratorContract:
     def test_returns_pentest_report_type(self, five_findings):
@@ -153,7 +168,14 @@ class TestPentestNarratorContract:
 
     def test_each_finding_has_required_keys(self, five_findings):
         report = PentestNarrator().analyse(five_findings)
-        required = {"id", "title", "cvss_score", "severity", "attack_narrative", "remediation"}
+        required = {
+            "id",
+            "title",
+            "cvss_score",
+            "severity",
+            "attack_narrative",
+            "remediation",
+        }
         for finding in report.findings:
             missing = required - finding.keys()
             assert not missing, f"Finding {finding.get('id')} missing: {missing}"
@@ -162,12 +184,16 @@ class TestPentestNarratorContract:
         report = PentestNarrator().analyse(five_findings)
         for f in report.findings:
             score = f.get("cvss_score")
-            assert isinstance(score, (int, float)), f"Non-numeric CVSS for {f.get('id')}: {score!r}"
+            assert isinstance(score, (int, float)), (
+                f"Non-numeric CVSS for {f.get('id')}: {score!r}"
+            )
 
     def test_cvss_scores_in_valid_range(self, five_findings):
         report = PentestNarrator().analyse(five_findings)
         for f in report.findings:
-            assert 0.0 <= f["cvss_score"] <= 10.0, f"CVSS out of range for {f['id']}: {f['cvss_score']}"
+            assert 0.0 <= f["cvss_score"] <= 10.0, (
+                f"CVSS out of range for {f['id']}: {f['cvss_score']}"
+            )
 
     def test_remediation_plan_is_list(self, five_findings):
         report = PentestNarrator().analyse(five_findings)
@@ -266,6 +292,7 @@ class TestPentestNarratorMarkdown:
 # ThreatModeller — contract tests
 # ---------------------------------------------------------------------------
 
+
 class TestThreatModellerContract:
     def test_returns_stride_model_type(self, efb_story):
         model = ThreatModeller().analyse(efb_story)
@@ -298,7 +325,9 @@ class TestThreatModellerContract:
         model = ThreatModeller().analyse(efb_story)
         covered = {t.category for t in model.threats}
         all_categories = set(STRIDECategory)
-        assert covered == all_categories, f"Missing STRIDE categories: {all_categories - covered}"
+        assert covered == all_categories, (
+            f"Missing STRIDE categories: {all_categories - covered}"
+        )
 
     def test_each_threat_has_id(self, efb_story):
         model = ThreatModeller().analyse(efb_story)
@@ -347,7 +376,9 @@ class TestThreatModellerContract:
         model = ThreatModeller().analyse(efb_story)
         valid = {"low", "medium", "high"}
         for t in model.threats:
-            assert t.likelihood in valid, f"{t.id} has invalid likelihood: {t.likelihood!r}"
+            assert t.likelihood in valid, (
+                f"{t.id} has invalid likelihood: {t.likelihood!r}"
+            )
 
     def test_impact_values_are_valid(self, efb_story):
         model = ThreatModeller().analyse(efb_story)
@@ -371,7 +402,9 @@ class TestThreatModellerMarkdown:
         modeller = ThreatModeller()
         md = modeller.to_markdown(modeller.analyse(efb_story))
         for cat in STRIDECategory:
-            assert cat.value in md, f"STRIDE category '{cat.value}' missing from Markdown"
+            assert cat.value in md, (
+                f"STRIDE category '{cat.value}' missing from Markdown"
+            )
 
     def test_markdown_has_attack_tree_section(self, efb_story):
         modeller = ThreatModeller()
@@ -389,6 +422,7 @@ class TestThreatModellerMarkdown:
 # ---------------------------------------------------------------------------
 # ComplianceMapper — contract tests
 # ---------------------------------------------------------------------------
+
 
 class TestComplianceMapperContract:
     def test_returns_compliance_matrix_type(self, five_findings):
@@ -409,7 +443,9 @@ class TestComplianceMapperContract:
         matrix = ComplianceMapper().map(five_findings)
         for e in matrix.entries:
             assert e.ed202a_objective, f"No ED-202A objective for {e.finding_id}"
-            assert "SO-" in e.ed202a_objective, f"Objective not SO-N format: {e.ed202a_objective}"
+            assert "SO-" in e.ed202a_objective, (
+                f"Objective not SO-N format: {e.ed202a_objective}"
+            )
 
     def test_each_entry_has_do326a_process(self, five_findings):
         matrix = ComplianceMapper().map(five_findings)
@@ -465,7 +501,12 @@ class TestComplianceMapperCounting:
 
     def test_counts_sum_to_total(self, five_findings):
         matrix = ComplianceMapper().map(five_findings)
-        total = matrix.critical_count + matrix.major_count + matrix.minor_count + matrix.compliant_count
+        total = (
+            matrix.critical_count
+            + matrix.major_count
+            + matrix.minor_count
+            + matrix.compliant_count
+        )
         assert total == len(five_findings)
 
     def test_w2_and_w4_are_critical(self, five_findings):
@@ -519,13 +560,14 @@ class TestComplianceMapperMarkdown:
     def test_markdown_has_emoji_indicators(self, five_findings):
         mapper = ComplianceMapper()
         md = mapper.to_markdown(mapper.map(five_findings))
-        assert "🔴" in md   # critical gap
-        assert "🟠" in md   # major gap
+        assert "🔴" in md  # critical gap
+        assert "🟠" in md  # major gap
 
 
 # ---------------------------------------------------------------------------
 # Pipeline integration — agents work together
 # ---------------------------------------------------------------------------
+
 
 class TestAgentPipelineIntegration:
     def test_narrator_findings_feed_mapper(self, five_findings):
@@ -542,9 +584,13 @@ class TestAgentPipelineIntegration:
         model = ThreatModeller().analyse(efb_story)
         all_test_names = [tc for t in model.threats for tc in t.test_cases]
         # At least one test name should reference auth, plan, or token
-        relevant = [n for n in all_test_names if any(
-            kw in n for kw in ("token", "plan", "auth", "role", "access", "pilot")
-        )]
+        relevant = [
+            n
+            for n in all_test_names
+            if any(
+                kw in n for kw in ("token", "plan", "auth", "role", "access", "pilot")
+            )
+        ]
         assert len(relevant) >= 2, (
             f"Expected test names referencing EFB domain. Got: {all_test_names}"
         )
@@ -553,14 +599,14 @@ class TestAgentPipelineIntegration:
         """End-to-end: all three agents produce non-empty Markdown output."""
         narrator = PentestNarrator()
         modeller = ThreatModeller()
-        mapper   = ComplianceMapper()
+        mapper = ComplianceMapper()
 
-        pentest_md    = narrator.to_markdown(narrator.analyse(five_findings))
-        stride_md     = modeller.to_markdown(modeller.analyse(efb_story))
+        pentest_md = narrator.to_markdown(narrator.analyse(five_findings))
+        stride_md = modeller.to_markdown(modeller.analyse(efb_story))
         compliance_md = mapper.to_markdown(mapper.map(five_findings))
 
-        assert len(pentest_md) > 500,    "Pentest report Markdown too short"
-        assert len(stride_md) > 500,     "STRIDE model Markdown too short"
+        assert len(pentest_md) > 500, "Pentest report Markdown too short"
+        assert len(stride_md) > 500, "STRIDE model Markdown too short"
         assert len(compliance_md) > 500, "Compliance matrix Markdown too short"
 
 
@@ -585,7 +631,9 @@ class TestPentestNarratorLive:
         report = PentestNarrator().analyse(five_findings)
         # Chain should reference both W4 and W3 or their titles
         chain_text = str(report.attack_chains).lower()
-        assert "debug" in chain_text or "idor" in chain_text or "w3" in chain_text.lower()
+        assert (
+            "debug" in chain_text or "idor" in chain_text or "w3" in chain_text.lower()
+        )
 
 
 @live
@@ -596,7 +644,9 @@ class TestThreatModellerLive:
 
     def test_live_attack_tree_for_high_impact_threat(self, efb_story):
         model = ThreatModeller().analyse(efb_story)
-        high_impact = [t for t in model.threats if t.impact == "high" and t.likelihood == "high"]
+        high_impact = [
+            t for t in model.threats if t.impact == "high" and t.likelihood == "high"
+        ]
         if high_impact:
             tree_roots = {tree["root_threat"] for tree in model.attack_trees}
             assert any(t.id in tree_roots for t in high_impact), (
@@ -615,5 +665,8 @@ class TestComplianceMapperLive:
         matrix = ComplianceMapper().map(five_findings)
         # At least one corrective action should mention a concrete code element
         actions = " ".join(e.corrective_action for e in matrix.entries)
-        has_code = any(kw in actions for kw in ["@", "def ", "import ", "return ", "flask", "limit", "check"])
+        has_code = any(
+            kw in actions
+            for kw in ["@", "def ", "import ", "return ", "flask", "limit", "check"]
+        )
         assert has_code, "Expected code-level corrective actions from live API"

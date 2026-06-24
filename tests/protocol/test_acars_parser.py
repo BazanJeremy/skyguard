@@ -10,8 +10,6 @@ Run: pytest tests/protocol/test_acars_parser.py -v
 
 import pytest
 
-pytestmark = pytest.mark.protocol  # applied to all tests in this module
-
 from src.simulators.acars_parser import (
     ACARSAttackBuilder,
     ACARSMessageBuilder,
@@ -20,6 +18,8 @@ from src.simulators.acars_parser import (
     MAX_TEXT_LENGTH,
     LABEL_REGISTRY,
 )
+
+pytestmark = pytest.mark.protocol  # applied to all tests in this module
 
 
 @pytest.fixture
@@ -40,6 +40,7 @@ def attacker() -> ACARSAttackBuilder:
 # ─────────────────────────────────────────────────────────────────
 # Normal traffic
 # ─────────────────────────────────────────────────────────────────
+
 
 class TestNormalMessages:
     def test_position_report_parses_ok(self, parser, builder):
@@ -92,6 +93,7 @@ class TestNormalMessages:
 # Builder validation
 # ─────────────────────────────────────────────────────────────────
 
+
 class TestBuilderValidation:
     def test_builder_rejects_bad_label(self, builder):
         with pytest.raises(ValueError, match="exactly 2 characters"):
@@ -112,6 +114,7 @@ class TestBuilderValidation:
 # Attack scenarios
 # ─────────────────────────────────────────────────────────────────
 
+
 class TestOversizedTextAttack:
     """
     W-ACARS-1 — Buffer overflow via oversized text field.
@@ -131,7 +134,7 @@ class TestOversizedTextAttack:
 
     def test_parser_does_not_crash_on_huge_payload(self, parser, attacker):
         raw = attacker.oversized_text(length=65535)
-        msg = parser.parse(raw)   # must not raise
+        msg = parser.parse(raw)  # must not raise
         assert msg is not None
 
     def test_text_length_exceeds_limit(self, parser, attacker):
@@ -223,12 +226,12 @@ class TestLabelInjectionAttack:
         assert msg.status in (ParseStatus.MALFORMED, ParseStatus.UNKNOWN_LABEL)
 
     def test_unknown_label_flagged(self, parser, attacker):
-        raw = attacker.label_injection(b"ZZ")   # valid ASCII but unknown
+        raw = attacker.label_injection(b"ZZ")  # valid ASCII but unknown
         msg = parser.parse(raw)
         assert msg.status == ParseStatus.UNKNOWN_LABEL
 
     def test_all_known_labels_parse_ok(self, parser, builder):
-        for label in list(LABEL_REGISTRY.keys())[:5]:   # sample first 5
+        for label in list(LABEL_REGISTRY.keys())[:5]:  # sample first 5
             raw = builder.build(label, "TEST")
             msg = parser.parse(raw)
             assert msg.status != ParseStatus.UNKNOWN_LABEL, (
@@ -256,14 +259,15 @@ class TestReplayAttack:
         original = builder.build("RA", "CLX DIRECT WAYPNT")
         replayed = attacker.replay_clearance(original, mutate_ack=True)
         orig_msg = parser.parse(original)
-        rep_msg  = parser.parse(replayed)
+        rep_msg = parser.parse(replayed)
         # ACK field should differ — but parser still accepts both
-        assert orig_msg.ack != rep_msg.ack or True   # documenting the gap
+        assert orig_msg.ack != rep_msg.ack or True  # documenting the gap
 
 
 # ─────────────────────────────────────────────────────────────────
 # Edge cases
 # ─────────────────────────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_empty_bytes_returns_truncated(self, parser):
@@ -280,6 +284,7 @@ class TestEdgeCases:
 
     def test_random_bytes_do_not_crash(self, parser):
         import os
+
         for _ in range(20):
             raw = os.urandom(32)
             msg = parser.parse(raw)

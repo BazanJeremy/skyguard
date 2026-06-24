@@ -58,39 +58,41 @@ LABEL_REGISTRY: dict[str, str] = {
 }
 
 # Max safe lengths — a parser must enforce these
-MAX_TEXT_LENGTH  = 220   # ARINC 618 limit
+MAX_TEXT_LENGTH = 220  # ARINC 618 limit
 MAX_LABEL_LENGTH = 2
-VALID_MODES      = frozenset(b"2.")
-ADDR_PATTERN     = re.compile(r"^[A-Z0-9]{1,2}-[A-Z0-9]{3,5}\s*$")
+VALID_MODES = frozenset(b"2.")
+ADDR_PATTERN = re.compile(r"^[A-Z0-9]{1,2}-[A-Z0-9]{3,5}\s*$")
 
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 class ParseStatus(Enum):
-    OK             = "ok"
-    MALFORMED      = "malformed"
-    UNKNOWN_LABEL  = "unknown_label"
-    TEXT_TOO_LONG  = "text_too_long"
-    BAD_PARITY     = "bad_parity"
-    INVALID_ADDR   = "invalid_addr"
-    TRUNCATED      = "truncated"
+    OK = "ok"
+    MALFORMED = "malformed"
+    UNKNOWN_LABEL = "unknown_label"
+    TEXT_TOO_LONG = "text_too_long"
+    BAD_PARITY = "bad_parity"
+    INVALID_ADDR = "invalid_addr"
+    TRUNCATED = "truncated"
 
 
 @dataclass
 class ACARSMessage:
     """Parsed representation of one ACARS message."""
-    mode:       str
-    address:    str
-    ack:        str
-    label:      str
-    block_id:   str
-    text:       str
-    raw:        bytes
-    status:     ParseStatus           = ParseStatus.OK
-    anomalies:  list[str]             = field(default_factory=list)
-    metadata:   dict[str, Any]        = field(default_factory=dict)
+
+    mode: str
+    address: str
+    ack: str
+    label: str
+    block_id: str
+    text: str
+    raw: bytes
+    status: ParseStatus = ParseStatus.OK
+    anomalies: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def label_name(self) -> str:
@@ -104,6 +106,7 @@ class ACARSMessage:
 # ---------------------------------------------------------------------------
 # Parser — the system under test for fuzzing
 # ---------------------------------------------------------------------------
+
 
 class ACARSParser:
     """
@@ -122,8 +125,13 @@ class ACARSParser:
         # ── Minimum length check ──────────────────────────────────────────
         if len(raw) < 13:
             return ACARSMessage(
-                mode="?", address="?", ack="?", label="??",
-                block_id="?", text="", raw=raw,
+                mode="?",
+                address="?",
+                ack="?",
+                label="??",
+                block_id="?",
+                text="",
+                raw=raw,
                 status=ParseStatus.TRUNCATED,
                 anomalies=["Frame too short to parse"],
             )
@@ -172,8 +180,13 @@ class ACARSParser:
         stx_pos = raw.find(STX, 13)
         if stx_pos == -1:
             return ACARSMessage(
-                mode=mode, address=address, ack=ack, label=label,
-                block_id=block_id, text="", raw=raw,
+                mode=mode,
+                address=address,
+                ack=ack,
+                label=label,
+                block_id=block_id,
+                text="",
+                raw=raw,
                 status=ParseStatus.MALFORMED,
                 anomalies=anomalies + ["Missing STX — cannot locate message body"],
             )
@@ -184,11 +197,11 @@ class ACARSParser:
             etx_pos = raw.find(ETX_LAST, stx_pos)
 
         if etx_pos == -1:
-            text_raw = raw[stx_pos + 1:]
+            text_raw = raw[stx_pos + 1 :]
             anomalies.append("Missing ETX — message may be truncated")
             status = ParseStatus.TRUNCATED
         else:
-            text_raw = raw[stx_pos + 1:etx_pos]
+            text_raw = raw[stx_pos + 1 : etx_pos]
 
         try:
             text = text_raw.decode("ascii", errors="replace")
@@ -226,6 +239,7 @@ class ACARSParser:
 # ---------------------------------------------------------------------------
 # Message builders — normal traffic generators
 # ---------------------------------------------------------------------------
+
 
 class ACARSMessageBuilder:
     """Builds well-formed ACARS frames for normal traffic simulation."""
@@ -272,6 +286,7 @@ class ACARSMessageBuilder:
 # Attack scenario builders
 # ---------------------------------------------------------------------------
 
+
 class ACARSAttackBuilder:
     """
     Constructs malformed or malicious ACARS frames for security testing.
@@ -290,7 +305,7 @@ class ACARSAttackBuilder:
         frame += b"H1"
         frame += b"A"
         frame += bytes([STX])
-        frame += b"X" * length      # intentionally exceeds MAX_TEXT_LENGTH
+        frame += b"X" * length  # intentionally exceeds MAX_TEXT_LENGTH
         frame += bytes([ETX_LAST])
         return frame
 
@@ -302,7 +317,7 @@ class ACARSAttackBuilder:
         frame = bytes([SOH, ord("2")])
         frame += b"F-GKXA "
         frame += b"!"
-        frame += b"RA"              # ATC clearance label — high impact if corrupted
+        frame += b"RA"  # ATC clearance label — high impact if corrupted
         frame += b"B"
         frame += bytes([STX])
         frame += b"CLX DIRECT " + b"\x00" * 5 + b" WAYPNT"
@@ -354,9 +369,7 @@ class ACARSAttackBuilder:
         frame += bytes([ETX_LAST])
         return frame
 
-    def replay_clearance(
-        self, original: bytes, mutate_ack: bool = True
-    ) -> bytes:
+    def replay_clearance(self, original: bytes, mutate_ack: bool = True) -> bytes:
         """
         Retransmit an ATC clearance with a different ACK char.
         Threat category: T4 — Replay attack on safety-critical instruction.

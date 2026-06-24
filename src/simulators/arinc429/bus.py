@@ -21,41 +21,42 @@ from __future__ import annotations
 
 import random
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Generator, Optional
 
-from .codec import encode, decode, Arinc429Word, encoder
-from .labels import SSM, get_label, LABEL_REGISTRY, DataFormat
+from .codec import decode, Arinc429Word, encoder
+from .labels import SSM, get_label, DataFormat
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Flight phase model
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class FlightPhase(str, Enum):
-    GROUND       = "GROUND"
-    TAKEOFF      = "TAKEOFF"
-    CLIMB        = "CLIMB"
-    CRUISE       = "CRUISE"
-    DESCENT      = "DESCENT"
-    APPROACH     = "APPROACH"
-    LANDING      = "LANDING"
+    GROUND = "GROUND"
+    TAKEOFF = "TAKEOFF"
+    CLIMB = "CLIMB"
+    CRUISE = "CRUISE"
+    DESCENT = "DESCENT"
+    APPROACH = "APPROACH"
+    LANDING = "LANDING"
 
 
 # Realistic parameter ranges per flight phase
 PHASE_PARAMETERS: dict[FlightPhase, dict[str, tuple[float, float]]] = {
     FlightPhase.GROUND: {
-        "203": (0, 50),          # Altitude ft
-        "210": (0, 30),          # TAS kt
-        "211": (0, 30),          # IAS kt
-        "212": (0.0, 0.05),      # Mach
-        "313": (0, 360),         # Heading deg
-        "324": (0, 10),          # Ground speed kt
-        "100": (18, 22),         # N1 % (idle)
-        "164": (200, 400),       # Fuel flow kg/h
-        "270": (7, 7),           # Gear down (0b111)
-        "177": (0, 5),           # Flaps
+        "203": (0, 50),  # Altitude ft
+        "210": (0, 30),  # TAS kt
+        "211": (0, 30),  # IAS kt
+        "212": (0.0, 0.05),  # Mach
+        "313": (0, 360),  # Heading deg
+        "324": (0, 10),  # Ground speed kt
+        "100": (18, 22),  # N1 % (idle)
+        "164": (200, 400),  # Fuel flow kg/h
+        "270": (7, 7),  # Gear down (0b111)
+        "177": (0, 5),  # Flaps
     },
     FlightPhase.TAKEOFF: {
         "203": (0, 500),
@@ -64,9 +65,9 @@ PHASE_PARAMETERS: dict[FlightPhase, dict[str, tuple[float, float]]] = {
         "212": (0.15, 0.30),
         "313": (0, 360),
         "324": (80, 200),
-        "100": (90, 102),        # N1 TOGA
+        "100": (90, 102),  # N1 TOGA
         "164": (5_000, 8_000),
-        "270": (7, 7),           # Gear down initially
+        "270": (7, 7),  # Gear down initially
         "177": (15, 20),
     },
     FlightPhase.CLIMB: {
@@ -78,7 +79,7 @@ PHASE_PARAMETERS: dict[FlightPhase, dict[str, tuple[float, float]]] = {
         "324": (300, 500),
         "100": (85, 95),
         "164": (2_500, 5_000),
-        "270": (0, 0),           # Gear up
+        "270": (0, 0),  # Gear up
         "177": (0, 5),
     },
     FlightPhase.CRUISE: {
@@ -100,7 +101,7 @@ PHASE_PARAMETERS: dict[FlightPhase, dict[str, tuple[float, float]]] = {
         "212": (0.50, 0.82),
         "313": (0, 360),
         "324": (300, 480),
-        "100": (40, 70),         # Idle/flight idle
+        "100": (40, 70),  # Idle/flight idle
         "164": (500, 1_500),
         "270": (0, 0),
         "177": (0, 5),
@@ -114,7 +115,7 @@ PHASE_PARAMETERS: dict[FlightPhase, dict[str, tuple[float, float]]] = {
         "324": (120, 200),
         "100": (50, 75),
         "164": (800, 2_000),
-        "270": (7, 7),           # Gear down
+        "270": (7, 7),  # Gear down
         "177": (25, 40),
     },
     FlightPhase.LANDING: {
@@ -136,18 +137,20 @@ PHASE_PARAMETERS: dict[FlightPhase, dict[str, tuple[float, float]]] = {
 # Fault injection types
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class FaultType(str, Enum):
-    RANGE_VIOLATION   = "RANGE_VIOLATION"
+    RANGE_VIOLATION = "RANGE_VIOLATION"
     PARITY_CORRUPTION = "PARITY_CORRUPTION"
-    SSM_SPOOF         = "SSM_SPOOF"
-    LABEL_INJECTION   = "LABEL_INJECTION"
-    REPLAY_ATTACK     = "REPLAY_ATTACK"
+    SSM_SPOOF = "SSM_SPOOF"
+    LABEL_INJECTION = "LABEL_INJECTION"
+    REPLAY_ATTACK = "REPLAY_ATTACK"
     SILENT_CORRUPTION = "SILENT_CORRUPTION"
 
 
 @dataclass
 class InjectedFault:
     """Describes a fault that was injected into the bus stream."""
+
     fault_type: FaultType
     label_octal: str
     original_value: Optional[float]
@@ -159,6 +162,7 @@ class InjectedFault:
 @dataclass
 class BusFrame:
     """A single bus transmission event."""
+
     word: Arinc429Word
     timestamp_ms: float
     phase: FlightPhase
@@ -172,6 +176,7 @@ class BusFrame:
 # ─────────────────────────────────────────────────────────────────────────────
 # Bus Simulator
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class Arinc429BusSimulator:
     """
@@ -194,7 +199,7 @@ class Arinc429BusSimulator:
         self.phase = phase
         self._rng = random.Random(seed)
         self._pending_faults: list[tuple[FaultType, Optional[str]]] = []
-        self._last_words: dict[str, int] = {}   # for replay attack simulation
+        self._last_words: dict[str, int] = {}  # for replay attack simulation
         self._frame_count: int = 0
         self._t0 = time.monotonic()
 
@@ -257,7 +262,9 @@ class Arinc429BusSimulator:
         if self._rng.random() > 0.5:
             bad_value = ld.range_max * self._rng.uniform(1.05, 2.0)
         else:
-            bad_value = ld.range_min - abs(ld.range_min) * self._rng.uniform(0.1, 1.0) - 1.0
+            bad_value = (
+                ld.range_min - abs(ld.range_min) * self._rng.uniform(0.1, 1.0) - 1.0
+            )
 
         raw = encoder.encode_bnr(label_octal, bad_value, _override_range_check=True)
         word = decode(raw)
@@ -286,7 +293,7 @@ class Arinc429BusSimulator:
         value = self._normal_value(label_octal)
         ld = get_label(label_octal)
         raw = encoder.encode_bnr(label_octal, value)
-        corrupted = raw ^ (1 << 31)   # flip parity bit
+        corrupted = raw ^ (1 << 31)  # flip parity bit
         word = decode(corrupted)
 
         fault = InjectedFault(
@@ -348,7 +355,9 @@ class Arinc429BusSimulator:
         # Send a value from a *different* phase range (still in certified range)
         other_phases = [p for p in FlightPhase if p != self.phase]
         alt_phase = self._rng.choice(other_phases)
-        alt_lo, alt_hi = PHASE_PARAMETERS.get(alt_phase, {}).get(label_octal, (ld.range_min, ld.range_max))
+        alt_lo, alt_hi = PHASE_PARAMETERS.get(alt_phase, {}).get(
+            label_octal, (ld.range_min, ld.range_max)
+        )
         bad_value = round(self._rng.uniform(alt_lo, alt_hi), 3)
 
         raw = encoder.encode_bnr(label_octal, bad_value)
@@ -407,16 +416,14 @@ class Arinc429BusSimulator:
             fault=fault,
         )
 
-    def _build_faulted_frame(
-        self, fault_type: FaultType, label_octal: str
-    ) -> BusFrame:
+    def _build_faulted_frame(self, fault_type: FaultType, label_octal: str) -> BusFrame:
         """Dispatch to the correct fault builder."""
         builders = {
-            FaultType.RANGE_VIOLATION:   self._fault_range_violation,
+            FaultType.RANGE_VIOLATION: self._fault_range_violation,
             FaultType.PARITY_CORRUPTION: self._fault_parity_corruption,
-            FaultType.SSM_SPOOF:         self._fault_ssm_spoof,
+            FaultType.SSM_SPOOF: self._fault_ssm_spoof,
             FaultType.SILENT_CORRUPTION: self._fault_silent_corruption,
-            FaultType.REPLAY_ATTACK:     self._fault_replay_attack,
+            FaultType.REPLAY_ATTACK: self._fault_replay_attack,
         }
         return builders[fault_type](label_octal)
 

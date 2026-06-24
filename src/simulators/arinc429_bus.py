@@ -28,17 +28,20 @@ from typing import Iterator
 # Enumerations
 # ---------------------------------------------------------------------------
 
+
 class SSM(IntEnum):
     """Sign/Status Matrix values for BNR (binary) words."""
-    PLUS_NORTH_RIGHT_TO = 0b00   # Positive / North / Right / To
-    NO_COMPUTED_DATA    = 0b01   # NCD — data unavailable
-    FUNCTIONAL_TEST     = 0b10   # Test mode
-    FAILURE_WARNING     = 0b11   # Data invalid / source failed
+
+    PLUS_NORTH_RIGHT_TO = 0b00  # Positive / North / Right / To
+    NO_COMPUTED_DATA = 0b01  # NCD — data unavailable
+    FUNCTIONAL_TEST = 0b10  # Test mode
+    FAILURE_WARNING = 0b11  # Data invalid / source failed
 
 
 class SDI(IntEnum):
     """Source/Destination Identifier — which LRU the word targets."""
-    ALL    = 0b00
+
+    ALL = 0b00
     RCVR_1 = 0b01
     RCVR_2 = 0b10
     RCVR_3 = 0b11
@@ -51,26 +54,111 @@ class SDI(IntEnum):
 
 LABEL_CATALOG: dict[int, dict] = {
     # label (decimal) : {name, unit, bnr_range, resolution}
-    0o101: {"name": "Computed Airspeed",    "unit": "knots",   "min": 0,      "max": 450,   "resolution": 0.25},
-    0o102: {"name": "Mach Number",          "unit": "mach",    "min": 0.0,    "max": 1.0,   "resolution": 0.001},
-    0o103: {"name": "Maximum Airspeed",     "unit": "knots",   "min": 0,      "max": 450,   "resolution": 0.25},
-    0o203: {"name": "Baro Altitude",        "unit": "feet",    "min": -2000,  "max": 50000, "resolution": 4.0},
-    0o206: {"name": "Baro Corrected Alt",   "unit": "feet",    "min": -2000,  "max": 50000, "resolution": 4.0},
-    0o310: {"name": "True Heading",         "unit": "degrees", "min": 0.0,    "max": 360.0, "resolution": 0.0055},
-    0o311: {"name": "Magnetic Heading",     "unit": "degrees", "min": 0.0,    "max": 360.0, "resolution": 0.0055},
-    0o312: {"name": "True Track Angle",     "unit": "degrees", "min": 0.0,    "max": 360.0, "resolution": 0.0055},
-    0o313: {"name": "Drift Angle",          "unit": "degrees", "min": -90.0,  "max": 90.0,  "resolution": 0.0055},
-    0o324: {"name": "Pitch Attitude",       "unit": "degrees", "min": -90.0,  "max": 90.0,  "resolution": 0.0055},
-    0o325: {"name": "Roll Attitude",        "unit": "degrees", "min": -180.0, "max": 180.0, "resolution": 0.0055},
-    0o361: {"name": "Ground Speed",         "unit": "knots",   "min": 0,      "max": 1000,  "resolution": 0.5},
-    0o362: {"name": "Wind Speed",           "unit": "knots",   "min": 0,      "max": 250,   "resolution": 0.5},
-    0o365: {"name": "Total Air Temperature","unit": "celsius",  "min": -100.0, "max": 60.0,  "resolution": 0.25},
+    0o101: {
+        "name": "Computed Airspeed",
+        "unit": "knots",
+        "min": 0,
+        "max": 450,
+        "resolution": 0.25,
+    },
+    0o102: {
+        "name": "Mach Number",
+        "unit": "mach",
+        "min": 0.0,
+        "max": 1.0,
+        "resolution": 0.001,
+    },
+    0o103: {
+        "name": "Maximum Airspeed",
+        "unit": "knots",
+        "min": 0,
+        "max": 450,
+        "resolution": 0.25,
+    },
+    0o203: {
+        "name": "Baro Altitude",
+        "unit": "feet",
+        "min": -2000,
+        "max": 50000,
+        "resolution": 4.0,
+    },
+    0o206: {
+        "name": "Baro Corrected Alt",
+        "unit": "feet",
+        "min": -2000,
+        "max": 50000,
+        "resolution": 4.0,
+    },
+    0o310: {
+        "name": "True Heading",
+        "unit": "degrees",
+        "min": 0.0,
+        "max": 360.0,
+        "resolution": 0.0055,
+    },
+    0o311: {
+        "name": "Magnetic Heading",
+        "unit": "degrees",
+        "min": 0.0,
+        "max": 360.0,
+        "resolution": 0.0055,
+    },
+    0o312: {
+        "name": "True Track Angle",
+        "unit": "degrees",
+        "min": 0.0,
+        "max": 360.0,
+        "resolution": 0.0055,
+    },
+    0o313: {
+        "name": "Drift Angle",
+        "unit": "degrees",
+        "min": -90.0,
+        "max": 90.0,
+        "resolution": 0.0055,
+    },
+    0o324: {
+        "name": "Pitch Attitude",
+        "unit": "degrees",
+        "min": -90.0,
+        "max": 90.0,
+        "resolution": 0.0055,
+    },
+    0o325: {
+        "name": "Roll Attitude",
+        "unit": "degrees",
+        "min": -180.0,
+        "max": 180.0,
+        "resolution": 0.0055,
+    },
+    0o361: {
+        "name": "Ground Speed",
+        "unit": "knots",
+        "min": 0,
+        "max": 1000,
+        "resolution": 0.5,
+    },
+    0o362: {
+        "name": "Wind Speed",
+        "unit": "knots",
+        "min": 0,
+        "max": 250,
+        "resolution": 0.5,
+    },
+    0o365: {
+        "name": "Total Air Temperature",
+        "unit": "celsius",
+        "min": -100.0,
+        "max": 60.0,
+        "resolution": 0.25,
+    },
 }
 
 
 # ---------------------------------------------------------------------------
 # Core data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ARINC429Word:
@@ -86,12 +174,13 @@ class ARINC429Word:
     parity      Computed odd parity bit
     raw_word    Full 32-bit frame as integer
     """
-    label:    int
-    sdi:      SDI      = SDI.ALL
-    data_raw: int      = 0
-    ssm:      SSM      = SSM.PLUS_NORTH_RIGHT_TO
-    parity:   int      = 0
-    raw_word: int      = 0
+
+    label: int
+    sdi: SDI = SDI.ALL
+    data_raw: int = 0
+    ssm: SSM = SSM.PLUS_NORTH_RIGHT_TO
+    parity: int = 0
+    raw_word: int = 0
 
     @property
     def label_name(self) -> str:
@@ -111,21 +200,23 @@ class ARINC429Word:
 @dataclass
 class BusFrame:
     """A timestamped collection of ARINC 429 words — one bus transmission."""
-    words:     list[ARINC429Word] = field(default_factory=list)
-    timestamp: float              = 0.0
-    bus_id:    str                = "BUS-1"
-    corrupted: bool               = False
+
+    words: list[ARINC429Word] = field(default_factory=list)
+    timestamp: float = 0.0
+    bus_id: str = "BUS-1"
+    corrupted: bool = False
 
 
 # ---------------------------------------------------------------------------
 # Encoding / decoding
 # ---------------------------------------------------------------------------
 
+
 def encode_word(
-    label:    int,
+    label: int,
     data_raw: int,
-    sdi:      SDI = SDI.ALL,
-    ssm:      SSM = SSM.PLUS_NORTH_RIGHT_TO,
+    sdi: SDI = SDI.ALL,
+    ssm: SSM = SSM.PLUS_NORTH_RIGHT_TO,
 ) -> ARINC429Word:
     """
     Encode a 32-bit ARINC 429 word from its fields.
@@ -135,13 +226,13 @@ def encode_word(
       bit32  31   30   29..11   10   9    8..1
     """
     label_masked = label & 0xFF
-    sdi_masked   = (int(sdi) & 0x3) << 8
-    data_masked  = (data_raw & 0x7FFFF) << 10
-    ssm_masked   = (int(ssm) & 0x3) << 29
+    sdi_masked = (int(sdi) & 0x3) << 8
+    data_masked = (data_raw & 0x7FFFF) << 10
+    ssm_masked = (int(ssm) & 0x3) << 29
 
     word_no_parity = label_masked | sdi_masked | data_masked | ssm_masked
-    parity_bit     = _compute_parity(word_no_parity) << 31
-    raw_word       = word_no_parity | parity_bit
+    parity_bit = _compute_parity(word_no_parity) << 31
+    raw_word = word_no_parity | parity_bit
 
     return ARINC429Word(
         label=label,
@@ -155,11 +246,11 @@ def encode_word(
 
 def decode_word(raw: int) -> ARINC429Word:
     """Decode a 32-bit integer into an ARINC429Word."""
-    label    = raw & 0xFF
-    sdi_val  = (raw >> 8)  & 0x3
+    label = raw & 0xFF
+    sdi_val = (raw >> 8) & 0x3
     data_raw = (raw >> 10) & 0x7FFFF
-    ssm_val  = (raw >> 29) & 0x3
-    parity   = (raw >> 31) & 0x1
+    ssm_val = (raw >> 29) & 0x3
+    parity = (raw >> 31) & 0x1
 
     return ARINC429Word(
         label=label,
@@ -183,9 +274,7 @@ def encode_bnr_value(label: int, value: float) -> ARINC429Word:
 
     lo, hi, res = info["min"], info["max"], info["resolution"]
     if not (lo <= value <= hi):
-        raise ValueError(
-            f"Value {value} out of range [{lo}, {hi}] for {info['name']}"
-        )
+        raise ValueError(f"Value {value} out of range [{lo}, {hi}] for {info['name']}")
 
     data_raw = int(round(value / res))
     ssm = SSM.PLUS_NORTH_RIGHT_TO if value >= 0 else SSM.PLUS_NORTH_RIGHT_TO
@@ -209,6 +298,7 @@ def decode_bnr_value(word: ARINC429Word) -> float | None:
 # Scenario generators — normal flight data
 # ---------------------------------------------------------------------------
 
+
 class NormalFlightScenario:
     """
     Generates realistic ARINC 429 bus frames for a normal cruise scenario.
@@ -216,24 +306,24 @@ class NormalFlightScenario:
     """
 
     CRUISE_VALUES: dict[int, float] = {
-        0o101: 280.0,    # CAS ~280 kt
-        0o102: 0.78,     # Mach 0.78
+        0o101: 280.0,  # CAS ~280 kt
+        0o102: 0.78,  # Mach 0.78
         0o203: 35000.0,  # Baro altitude 35 000 ft
-        0o310: 087.0,    # True heading 087°
-        0o324: 2.5,      # Pitch +2.5°
-        0o325: 0.3,      # Roll ~0° (slight bank)
-        0o361: 460.0,    # Ground speed 460 kt
-        0o365: -56.0,    # TAT -56°C at FL350
+        0o310: 087.0,  # True heading 087°
+        0o324: 2.5,  # Pitch +2.5°
+        0o325: 0.3,  # Roll ~0° (slight bank)
+        0o361: 460.0,  # Ground speed 460 kt
+        0o365: -56.0,  # TAT -56°C at FL350
     }
 
     def generate_frame(self, timestamp: float = 0.0, jitter: float = 0.01) -> BusFrame:
         """Generate one bus frame with small random jitter on each value."""
         words = []
         for label, base_value in self.CRUISE_VALUES.items():
-            info   = LABEL_CATALOG[label]
+            info = LABEL_CATALOG[label]
             jitter_val = base_value * (1 + random.uniform(-jitter, jitter))
-            clamped    = max(info["min"], min(info["max"], jitter_val))
-            word       = encode_bnr_value(label, clamped)
+            clamped = max(info["min"], min(info["max"], jitter_val))
+            word = encode_bnr_value(label, clamped)
             words.append(word)
         return BusFrame(words=words, timestamp=timestamp, bus_id="BUS-1")
 
@@ -246,6 +336,7 @@ class NormalFlightScenario:
 # ---------------------------------------------------------------------------
 # Attack / anomaly scenario generators
 # ---------------------------------------------------------------------------
+
 
 class OutOfRangeInjector:
     """
@@ -263,10 +354,10 @@ class OutOfRangeInjector:
         Build a word whose data_raw encodes a value `multiplier × max_range`.
         Bypasses encode_bnr_value validation intentionally.
         """
-        info     = LABEL_CATALOG.get(label)
+        info = LABEL_CATALOG.get(label)
         if not info:
             raise ValueError(f"Unknown label 0o{label:03o}")
-        bad_val  = info["max"] * multiplier
+        bad_val = info["max"] * multiplier
         data_raw = int(round(bad_val / info["resolution"])) & 0x7FFFF
         return encode_word(label, data_raw, ssm=SSM.PLUS_NORTH_RIGHT_TO)
 
@@ -291,7 +382,7 @@ class ParityCorruptionInjector:
         raw = word.raw_word
         positions = random.sample(range(32), flip_bits)
         for pos in positions:
-            raw ^= (1 << pos)
+            raw ^= 1 << pos
         return decode_word(raw)
 
     def corrupt_frame(self, frame: BusFrame, ratio: float = 0.3) -> BusFrame:
@@ -380,12 +471,13 @@ class ReplayAttackGenerator:
 # Bus validator — the system under test
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ValidationResult:
-    word:          ARINC429Word
-    parity_ok:     bool
-    range_ok:      bool
-    ssm_valid:     bool
+    word: ARINC429Word
+    parity_ok: bool
+    range_ok: bool
+    ssm_valid: bool
     anomaly_flags: list[str] = field(default_factory=list)
 
     @property
@@ -442,6 +534,7 @@ class ARINC429Validator:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _compute_parity(word: int) -> int:
     """
     Compute odd parity over bits 0-30 (bit 31 is the parity bit itself).
@@ -462,5 +555,5 @@ def bytes_to_words(data: bytes) -> list[ARINC429Word]:
     if len(data) % 4 != 0:
         raise ValueError("Data length must be a multiple of 4 bytes")
     count = len(data) // 4
-    raws  = struct.unpack(f">{count}I", data)
+    raws = struct.unpack(f">{count}I", data)
     return [decode_word(r) for r in raws]

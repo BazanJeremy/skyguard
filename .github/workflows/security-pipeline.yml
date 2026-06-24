@@ -391,28 +391,27 @@ jobs:
 
     permissions:
       issues: write
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Determine failed jobs
-        id: failed
-        run: |
-          FAILED=""
-          [[ "${{ needs.protocol-tests.result }}" == "failure" ]] && FAILED="$FAILED protocol-tests"
-          [[ "${{ needs.security-tests.result }}"  == "failure" ]] && FAILED="$FAILED security-tests"
-          [[ "${{ needs.agent-tests.result }}"     == "failure" ]] && FAILED="$FAILED agent-tests"
-          [[ "${{ needs.ai-analysis.result }}"     == "failure" ]] && FAILED="$FAILED ai-analysis"
-          echo "failed_jobs=${FAILED}" >> "$GITHUB_OUTPUT"
-
       - name: Create GitHub Issue
         uses: actions/github-script@v7
         with:
           script: |
-            const failedJobs = "${{ steps.failed.outputs.failed_jobs }}".trim();
-            const sha        = context.sha.substring(0, 7);
-            const runUrl     = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const branch     = context.ref.replace("refs/heads/", "");
+            const sha     = context.sha.substring(0, 7);
+            const runUrl  = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const branch  = context.ref.replace("refs/heads/", "");
+
+            const results = {
+              "protocol-tests": "${{ needs.protocol-tests.result }}",
+              "security-tests":  "${{ needs.security-tests.result }}",
+              "agent-tests":     "${{ needs.agent-tests.result }}",
+              "ai-analysis":     "${{ needs.ai-analysis.result }}",
+            };
+            const failedJobs = Object.entries(results)
+              .filter(([, r]) => r === "failure")
+              .map(([n]) => n)
+              .join(", ");
 
             const body = [
               "## 🚨 SkyGuard CI Regression Detected",
@@ -422,40 +421,27 @@ jobs:
               "",
               "### Failure Details",
               "",
-              `| Field       | Value |`,
-              `|-------------|-------|`,
-              `| **Commit**  | \`${sha}\` |`,
-              `| **Branch**  | \`${branch}\` |`,
-              `| **Trigger** | ${context.eventName} |`,
-              `| **Failed jobs** | \`${failedJobs}\` |`,
-              `| **Run**     | [View CI run](${runUrl}) |`,
-              "",
-              "### Classification",
-              "",
-              "| Label | Meaning |",
-              "|-------|---------|",
-              "| `ai-detected` | Filed by the SkyGuard AI pipeline |",
-              "| `regression`  | A previously passing test now fails |",
-              "| `ci-failure`  | Requires investigation before next release |",
+              `| Field | Value |`,
+              `|---|---|`,
+              `| **Commit** | \`${sha}\` |`,
+              `| **Branch** | \`${branch}\` |`,
+              `| **Failed jobs** | \`${failedJobs || "unknown"}\` |`,
+              `| **Run** | [View CI run](${runUrl}) |`,
               "",
               "### Next Steps",
               "",
               "1. Review the [CI run logs](" + runUrl + ")",
-              "2. Check the Allure report on GitHub Pages",
-              "3. Run `pytest tests/ -v --tb=long` locally",
-              "4. If a security weakness regressed, verify W1–W5 tests in `tests/security/`",
-              "5. Close this issue once the fix is merged to `main`",
+              "2. Run `python -m pytest tests/ -v --tb=long` locally",
+              "3. If a security weakness regressed, check `tests/security/`",
+              "4. Close this issue once the fix is merged to `main`",
               "",
               "---",
-              "*Filed by SkyGuard AI Pipeline · Prompt v1.0.0 · Model: claude-sonnet-4-6*",
+              "*Filed by SkyGuard AI Pipeline · claude-sonnet-4-6*",
             ].join("\n");
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo:  context.repo.repo,
-              title: `🚨 CI regression on main — ${sha} — failed: ${failedJobs}`,
+              title: `🚨 CI regression on main — ${sha} — ${failedJobs || "unknown jobs"}`,
               body,
-              labels: ["ai-detected", "regression", "ci-failure"],
             });
-
-            core.info(`Issue created for failed jobs: ${failedJobs}`);

@@ -42,51 +42,62 @@ from src.agents.pentest_narrator import SecurityFinding
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 class ComplianceGap(str, Enum):
-    COMPLIANT    = "compliant"
-    MINOR_GAP    = "minor_gap"
-    MAJOR_GAP    = "major_gap"
+    COMPLIANT = "compliant"
+    MINOR_GAP = "minor_gap"
+    MAJOR_GAP = "major_gap"
     CRITICAL_GAP = "critical_gap"
 
 
 @dataclass
 class ComplianceEntry:
     """One row in the compliance matrix."""
-    finding_id:       str
-    finding_title:    str
-    ed202a_objective: str    # e.g. "SO-3: Maintain data integrity"
-    ed202a_section:   str    # e.g. "Section 5.2 — Threat Identification"
-    do326a_process:   str    # e.g. "5.3 — Security Risk Assessment"
-    gap:              ComplianceGap
-    gap_rationale:    str    # why this gap rating was assigned
-    corrective_action: str   # what must be done to achieve compliance
-    verification_test: str   # test name that would verify closure
+
+    finding_id: str
+    finding_title: str
+    ed202a_objective: str  # e.g. "SO-3: Maintain data integrity"
+    ed202a_section: str  # e.g. "Section 5.2 — Threat Identification"
+    do326a_process: str  # e.g. "5.3 — Security Risk Assessment"
+    gap: ComplianceGap
+    gap_rationale: str  # why this gap rating was assigned
+    corrective_action: str  # what must be done to achieve compliance
+    verification_test: str  # test name that would verify closure
 
 
 @dataclass
 class ComplianceMatrix:
     """Full compliance output — output of the Compliance Mapper agent."""
-    system:           str = "EFB API — SkyGuard simulation"
-    standard:         str = "EASA ED-202A / DO-326A"
+
+    system: str = "EFB API — SkyGuard simulation"
+    standard: str = "EASA ED-202A / DO-326A"
     scope_disclaimer: str = (
         "SIMULATION ONLY — not a formal compliance assessment. "
         "Real certification requires engagement with an EASA-approved organisation."
     )
-    entries:          list[ComplianceEntry] = field(default_factory=list)
-    overall_posture:  str = ""
-    critical_count:   int = 0
-    major_count:      int = 0
-    minor_count:      int = 0
-    compliant_count:  int = 0
-    raw_response:     str = ""
-    prompt_version:   str = "v1.0.0"
-    model:            str = "claude-sonnet-4-6"
+    entries: list[ComplianceEntry] = field(default_factory=list)
+    overall_posture: str = ""
+    critical_count: int = 0
+    major_count: int = 0
+    minor_count: int = 0
+    compliant_count: int = 0
+    raw_response: str = ""
+    prompt_version: str = "v1.0.0"
+    model: str = "claude-sonnet-4-6"
 
     def __post_init__(self) -> None:
-        self.critical_count  = sum(1 for e in self.entries if e.gap == ComplianceGap.CRITICAL_GAP)
-        self.major_count     = sum(1 for e in self.entries if e.gap == ComplianceGap.MAJOR_GAP)
-        self.minor_count     = sum(1 for e in self.entries if e.gap == ComplianceGap.MINOR_GAP)
-        self.compliant_count = sum(1 for e in self.entries if e.gap == ComplianceGap.COMPLIANT)
+        self.critical_count = sum(
+            1 for e in self.entries if e.gap == ComplianceGap.CRITICAL_GAP
+        )
+        self.major_count = sum(
+            1 for e in self.entries if e.gap == ComplianceGap.MAJOR_GAP
+        )
+        self.minor_count = sum(
+            1 for e in self.entries if e.gap == ComplianceGap.MINOR_GAP
+        )
+        self.compliant_count = sum(
+            1 for e in self.entries if e.gap == ComplianceGap.COMPLIANT
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -171,10 +182,10 @@ Generate the full compliance matrix JSON.
 _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
     "W1": {
         "ed202a_objective": "SO-3: Implement security controls",
-        "ed202a_section":   "Section 5.3 — Security risk assessment",
-        "do326a_process":   "7.2 — Authentication and access control implementation",
-        "gap":              ComplianceGap.MAJOR_GAP,
-        "gap_rationale":    (
+        "ed202a_section": "Section 5.3 — Security risk assessment",
+        "do326a_process": "7.2 — Authentication and access control implementation",
+        "gap": ComplianceGap.MAJOR_GAP,
+        "gap_rationale": (
             "No rate limiting on the authentication endpoint violates SO-3. "
             "An attacker can perform unlimited credential stuffing, directly "
             "threatening pilot identity assurance — a safety-relevant control."
@@ -187,10 +198,10 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
     },
     "W2": {
         "ed202a_objective": "SO-3: Implement security controls",
-        "ed202a_section":   "Section 7.1 — Cryptographic controls",
-        "do326a_process":   "7.3 — Cryptographic key management",
-        "gap":              ComplianceGap.CRITICAL_GAP,
-        "gap_rationale":    (
+        "ed202a_section": "Section 7.1 — Cryptographic controls",
+        "do326a_process": "7.3 — Cryptographic key management",
+        "gap": ComplianceGap.CRITICAL_GAP,
+        "gap_rationale": (
             "Hardcoded JWT secret 'skyguard-dev-secret-2024' is exposed via "
             "the debug endpoint. A compromised secret allows unlimited token forgery, "
             "enabling any attacker to impersonate any pilot — critical safety impact."
@@ -204,10 +215,10 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
     },
     "W3": {
         "ed202a_objective": "SO-3: Implement security controls",
-        "ed202a_section":   "Section 6.2 — Security requirements for data integrity",
-        "do326a_process":   "7.2 — Authorisation and access control",
-        "gap":              ComplianceGap.MAJOR_GAP,
-        "gap_rationale":    (
+        "ed202a_section": "Section 6.2 — Security requirements for data integrity",
+        "do326a_process": "7.2 — Authorisation and access control",
+        "gap": ComplianceGap.MAJOR_GAP,
+        "gap_rationale": (
             "IDOR on GET /flightplans/<id> allows any pilot to read any other pilot's "
             "flight plan. Flight plan data includes route, fuel load, and alternates — "
             "tampering could lead to a pilot operating with incorrect routing data."
@@ -221,10 +232,10 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
     },
     "W4": {
         "ed202a_objective": "SO-3: Implement security controls",
-        "ed202a_section":   "Section 5.4 — Attack surface reduction",
-        "do326a_process":   "8.1 — Security verification of implemented controls",
-        "gap":              ComplianceGap.CRITICAL_GAP,
-        "gap_rationale":    (
+        "ed202a_section": "Section 5.4 — Attack surface reduction",
+        "do326a_process": "8.1 — Security verification of implemented controls",
+        "gap": ComplianceGap.CRITICAL_GAP,
+        "gap_rationale": (
             "The unauthenticated /debug endpoint exposes active session tokens, "
             "all usernames, environment variables, and the JWT secret. "
             "This single endpoint negates all other authentication controls — "
@@ -239,10 +250,10 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
     },
     "W5": {
         "ed202a_objective": "SO-6: Manage identified vulnerabilities",
-        "ed202a_section":   "Section 5.5 — Information disclosure risk",
-        "do326a_process":   "9.1 — Vulnerability management",
-        "gap":              ComplianceGap.MINOR_GAP,
-        "gap_rationale":    (
+        "ed202a_section": "Section 5.5 — Information disclosure risk",
+        "do326a_process": "9.1 — Vulnerability management",
+        "gap": ComplianceGap.MINOR_GAP,
+        "gap_rationale": (
             "Stack traces, Python version, and hostname in responses aid targeted "
             "exploitation but do not directly enable a safety-relevant attack. "
             "Classified as minor gap — reduces attack difficulty rather than "
@@ -264,32 +275,38 @@ def _fallback_matrix(findings: list[SecurityFinding]) -> ComplianceMatrix:
     for f in findings:
         fb = _FALLBACK_ENTRIES.get(f.id)
         if fb:
-            entries.append(ComplianceEntry(
-                finding_id=f.id,
-                finding_title=f.title,
-                ed202a_objective=fb["ed202a_objective"],
-                ed202a_section=fb["ed202a_section"],
-                do326a_process=fb["do326a_process"],
-                gap=fb["gap"],
-                gap_rationale=fb["gap_rationale"],
-                corrective_action=fb["corrective_action"],
-                verification_test=fb["verification_test"],
-            ))
+            entries.append(
+                ComplianceEntry(
+                    finding_id=f.id,
+                    finding_title=f.title,
+                    ed202a_objective=fb["ed202a_objective"],
+                    ed202a_section=fb["ed202a_section"],
+                    do326a_process=fb["do326a_process"],
+                    gap=fb["gap"],
+                    gap_rationale=fb["gap_rationale"],
+                    corrective_action=fb["corrective_action"],
+                    verification_test=fb["verification_test"],
+                )
+            )
         else:
             # Generic entry for unknown findings
-            entries.append(ComplianceEntry(
-                finding_id=f.id,
-                finding_title=f.title,
-                ed202a_objective="SO-6: Manage identified vulnerabilities",
-                ed202a_section="Section 5.3 — Security risk assessment",
-                do326a_process="9.1 — Vulnerability management",
-                gap=ComplianceGap.MAJOR_GAP,
-                gap_rationale=f.description,
-                corrective_action="Assess and remediate per security risk assessment.",
-                verification_test=f"test_{f.id.lower()}_remediated",
-            ))
+            entries.append(
+                ComplianceEntry(
+                    finding_id=f.id,
+                    finding_title=f.title,
+                    ed202a_objective="SO-6: Manage identified vulnerabilities",
+                    ed202a_section="Section 5.3 — Security risk assessment",
+                    do326a_process="9.1 — Vulnerability management",
+                    gap=ComplianceGap.MAJOR_GAP,
+                    gap_rationale=f.description,
+                    corrective_action="Assess and remediate per security risk assessment.",
+                    verification_test=f"test_{f.id.lower()}_remediated",
+                )
+            )
 
-    matrix = ComplianceMatrix(entries=entries, raw_response="[fallback — no API call made]")
+    matrix = ComplianceMatrix(
+        entries=entries, raw_response="[fallback — no API call made]"
+    )
     matrix.overall_posture = (
         f"Rule-based assessment (no API key). "
         f"{matrix.critical_count} critical gap(s), {matrix.major_count} major gap(s), "
@@ -303,6 +320,7 @@ def _fallback_matrix(findings: list[SecurityFinding]) -> ComplianceMatrix:
 # Compliance Mapper Agent
 # ---------------------------------------------------------------------------
 
+
 class ComplianceMapper:
     """
     AI agent that maps security findings to EASA ED-202A / DO-326A objectives.
@@ -313,10 +331,14 @@ class ComplianceMapper:
         print(mapper.to_markdown(matrix))
     """
 
-    def __init__(self, api_key: str | None = None, model: str = "claude-sonnet-4-6") -> None:
+    def __init__(
+        self, api_key: str | None = None, model: str = "claude-sonnet-4-6"
+    ) -> None:
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        self._model   = model
-        self._client  = anthropic.Anthropic(api_key=self._api_key) if self._api_key else None
+        self._model = model
+        self._client = (
+            anthropic.Anthropic(api_key=self._api_key) if self._api_key else None
+        )
 
     @property
     def has_api_key(self) -> bool:
@@ -334,6 +356,7 @@ class ComplianceMapper:
 
     def _call_api(self, findings: list[SecurityFinding]) -> ComplianceMatrix:
         from dataclasses import asdict
+
         findings_json = json.dumps([asdict(f) for f in findings], indent=2, default=str)
         user_prompt = USER_PROMPT_TEMPLATE_V1.format(findings_json=findings_json)
 
@@ -355,17 +378,19 @@ class ComplianceMapper:
                 gap = ComplianceGap(e.get("gap", "major_gap"))
             except ValueError:
                 gap = ComplianceGap.MAJOR_GAP
-            entries.append(ComplianceEntry(
-                finding_id=e.get("finding_id", "?"),
-                finding_title=e.get("finding_title", ""),
-                ed202a_objective=e.get("ed202a_objective", ""),
-                ed202a_section=e.get("ed202a_section", ""),
-                do326a_process=e.get("do326a_process", ""),
-                gap=gap,
-                gap_rationale=e.get("gap_rationale", ""),
-                corrective_action=e.get("corrective_action", ""),
-                verification_test=e.get("verification_test", ""),
-            ))
+            entries.append(
+                ComplianceEntry(
+                    finding_id=e.get("finding_id", "?"),
+                    finding_title=e.get("finding_title", ""),
+                    ed202a_objective=e.get("ed202a_objective", ""),
+                    ed202a_section=e.get("ed202a_section", ""),
+                    do326a_process=e.get("do326a_process", ""),
+                    gap=gap,
+                    gap_rationale=e.get("gap_rationale", ""),
+                    corrective_action=e.get("corrective_action", ""),
+                    verification_test=e.get("verification_test", ""),
+                )
+            )
 
         matrix = ComplianceMatrix(
             entries=entries,
@@ -379,9 +404,9 @@ class ComplianceMapper:
         """Render a ComplianceMatrix as a Markdown compliance report."""
         gap_emoji = {
             ComplianceGap.CRITICAL_GAP: "🔴",
-            ComplianceGap.MAJOR_GAP:    "🟠",
-            ComplianceGap.MINOR_GAP:    "🟡",
-            ComplianceGap.COMPLIANT:    "🟢",
+            ComplianceGap.MAJOR_GAP: "🟠",
+            ComplianceGap.MINOR_GAP: "🟡",
+            ComplianceGap.COMPLIANT: "🟢",
         }
 
         lines = [
@@ -399,8 +424,8 @@ class ComplianceMapper:
             "",
             "## Gap Summary",
             "",
-            f"| Gap level | Count |",
-            f"|---|---|",
+            "| Gap level | Count |",
+            "|---|---|",
             f"| 🔴 Critical gap | {matrix.critical_count} |",
             f"| 🟠 Major gap    | {matrix.major_count} |",
             f"| 🟡 Minor gap    | {matrix.minor_count} |",
