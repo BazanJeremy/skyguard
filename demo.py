@@ -176,7 +176,7 @@ def run_pentest_narrator(save: bool, reports_dir: Path) -> str:
     md = narrator.to_markdown(report)
     if save:
         path = reports_dir / "pentest-report.md"
-        path.write_text(md)
+        path.write_text(md, encoding="utf-8")
         print(f"\n  {GREEN}✓ Saved → {path}{RESET}")
 
     return md
@@ -219,7 +219,7 @@ def run_threat_modeller(save: bool, reports_dir: Path) -> str:
     md = modeller.to_markdown(model)
     if save:
         path = reports_dir / "stride-threat-model.md"
-        path.write_text(md)
+        path.write_text(md, encoding="utf-8")
         print(f"\n  {GREEN}✓ Saved → {path}{RESET}")
 
     return md
@@ -253,7 +253,7 @@ def run_compliance_mapper(save: bool, reports_dir: Path) -> str:
     md = mapper.to_markdown(matrix)
     if save:
         path = reports_dir / "compliance-matrix.md"
-        path.write_text(md)
+        path.write_text(md, encoding="utf-8")
         print(f"\n  {GREEN}✓ Saved → {path}{RESET}")
 
     return md

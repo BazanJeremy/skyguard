@@ -13,8 +13,11 @@ Run: pytest tests/fuzzing/ -v --hypothesis-show-statistics
 """
 
 import string
+import pytest
 from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
+
+pytestmark = pytest.mark.fuzzing  # applied to all tests in this module
 
 from src.simulators.acars_parser import (
     ACARSMessageBuilder,
