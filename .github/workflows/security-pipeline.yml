@@ -352,23 +352,21 @@ jobs:
           path: allure-results/
           merge-multiple: true
 
-      - name: Generate and publish Allure report
-        uses: simple-elf/allure-report-action@v1.9
-        with:
-          allure_results: allure-results
-          allure_report: allure-report
-          gh_pages: gh-pages
-          allure_history: allure-history
-          keep_reports: 10
+      - name: Install Allure via npm
+        run: npm install -g allure-commandline --silent
+
+      - name: Generate Allure report
+        run: |
+          allure generate allure-results/ --output allure-report/ --clean
+          echo "Report generated — $(ls allure-report/ | wc -l) files"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-history
-          commit_message: "ci: update Allure report — ${{ github.sha }}"
-
+          publish_dir: allure-report/
+          commit_message: "ci: Allure report — ${{ github.sha }}" 
 
   # JOB 7 — Auto-file GitHub Issue on regression
   # Fires when any upstream job fails on main
