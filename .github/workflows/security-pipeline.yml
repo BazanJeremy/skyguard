@@ -329,6 +329,7 @@ jobs:
           retention-days: 30
 
   # ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
   # JOB 6 — Allure report → GitHub Pages
   # ────────────────────────────────────────────────────────────────────────────
   allure-report:
@@ -339,7 +340,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     permissions:
-      contents: write       # needed to push to gh-pages branch
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -348,38 +349,27 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: allure-*
-          path: allure-results-all/
+          path: allure-results/
           merge-multiple: true
 
-      - name: Install Allure CLI
-        run: |
-          wget -q "https://github.com/allure-framework/allure2/releases/download/${{ env.ALLURE_VERSION }}/allure-${{ env.ALLURE_VERSION }}_all.deb"
-          sudo dpkg -i "allure-${{ env.ALLURE_VERSION }}_all.deb"
-
-      - name: Generate Allure report
-        run: |
-          allure generate allure-results-all/ \
-            --output allure-report/ \
-            --clean
-
-      - name: Add SkyGuard branding to report
-        run: |
-          cat > allure-report/index.html.patch << 'EOF'
-          <!-- SkyGuard CI Report -->
-          EOF
-          # Inject project name into report title
-          sed -i 's/<title>Allure Report<\/title>/<title>SkyGuard — Avionics Security CI Report<\/title>/' \
-            allure-report/index.html 2>/dev/null || true
+      - name: Generate and publish Allure report
+        uses: simple-elf/allure-report-action@v1.9
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          allure_history: allure-history
+          keep_reports: 10
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./allure-report
           publish_branch: gh-pages
+          publish_dir: allure-history
           commit_message: "ci: update Allure report — ${{ github.sha }}"
 
-  # ────────────────────────────────────────────────────────────────────────────
+
   # JOB 7 — Auto-file GitHub Issue on regression
   # Fires when any upstream job fails on main
   # ────────────────────────────────────────────────────────────────────────────
