@@ -360,13 +360,15 @@ class ComplianceMapper:
         findings_json = json.dumps([asdict(f) for f in findings], indent=2, default=str)
         user_prompt = USER_PROMPT_TEMPLATE_V1.format(findings_json=findings_json)
 
+        assert self._client is not None, "_call_api requires a valid API key"
         message = self._client.messages.create(
             model=self._model,
             max_tokens=2048,
             system=SYSTEM_PROMPT_V1,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        raw = message.content[0].text.strip()
+        text_block = next(b for b in message.content if b.type == "text")
+        raw = text_block.text.strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 

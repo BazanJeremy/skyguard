@@ -26,6 +26,7 @@ import json
 import os
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 import anthropic
 
@@ -82,7 +83,7 @@ class STRIDEModel:
     actors: list[str]
     assets: list[str]
     threats: list[STRIDEThreat]
-    attack_trees: list[dict]  # for high-severity threats
+    attack_trees: list[dict[str, Any]]  # for high-severity threats
     summary: str
     raw_response: str
     prompt_version: str = "v1.0.0"
@@ -411,13 +412,15 @@ class ThreatModeller:
             scenarios=scenarios_text,
         )
 
+        assert self._client is not None, "_call_api requires a valid API key"
         message = self._client.messages.create(
             model=self._model,
             max_tokens=2048,
             system=SYSTEM_PROMPT_V1,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        raw = message.content[0].text.strip()
+        text_block = next(b for b in message.content if b.type == "text")
+        raw = text_block.text.strip()
 
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
@@ -530,7 +533,7 @@ class ThreatModeller:
         return "\n".join(lines)
 
 
-def _render_tree(node: dict, indent: int = 0) -> str:
+def _render_tree(node: dict[str, Any], indent: int = 0) -> str:
     """Recursively render an attack tree as ASCII art."""
     prefix = "  " * indent + ("└─ " if indent > 0 else "")
     lines = [prefix + node.get("node", "?")]
