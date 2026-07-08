@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Test & tooling caches
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.mypy_cache/
+.coverage
+
+# Allure (generated locally; CI uploads artifacts)
+allure-results/
+allure-report/
+
+# Environment — never commit real keys
+.env
