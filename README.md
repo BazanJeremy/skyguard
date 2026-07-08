@@ -115,7 +115,7 @@ The avionics data bus standard used on A320, B737, and most commercial aircraft 
 | `SSMSpoofingInjector` | Forces NAV labels to `NO_COMPUTED_DATA` | Display blanking / availability |
 | `ReplayAttackGenerator` | Retransmits captured frames with shifted timestamps | Stale data injection |
 
-45 protocol tests + property-based fuzzing via Hypothesis.
+49 protocol tests + property-based fuzzing via Hypothesis.
 
 ### ACARS parser — `src/simulators/acars_parser.py`
 
@@ -199,7 +199,7 @@ Gap ratings: `🔴 critical_gap` / `🟠 major_gap` / `🟡 minor_gap` / `🟢 c
 
 | Layer | File(s) | Tests | What's covered |
 |---|---|---|---|
-| Protocol | `tests/protocol/` | 57 | ARINC 429 encode/decode, BNR, parity, 4 injectors; ACARS parser, 6 attack builders |
+| Protocol | `tests/protocol/` | 82 | ARINC 429 encode/decode, BNR, parity, 4 injectors; ACARS parser, 6 attack builders |
 | Fuzzing | `tests/fuzzing/` | 27 | Hypothesis: parser never crashes, return type invariant, idempotence, batch consistency |
 | Security | `tests/security/test_efb_api.py` | 71 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration |
 | Agents | `tests/agents/test_agents.py` | 72 | Output contracts, fallback behaviour, edge cases, Markdown rendering, pipeline integration |
