@@ -290,7 +290,7 @@ def main() -> None:
     banner("Pipeline Complete")
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     print(f"  Timestamp : {ts}")
-    print(f"  Tests     : 252 passing (180 EFB + 72 agents)")
+    print(f"  Tests     : 252 passed, 6 skipped")
     print(f"  Agents    : 3 / 3 completed")
     if args.save:
         for name in ["pentest-report.md", "stride-threat-model.md", "compliance-matrix.md"]:

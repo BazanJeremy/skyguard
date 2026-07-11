@@ -9,6 +9,8 @@
 [![SAST](https://img.shields.io/badge/SAST-Bandit%20%2B%20Semgrep-orange)](.github/workflows/static-analysis.yml)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
+> 🇫🇷 **Version française : [README.md](README.md)**
+
 ---
 
 ## Why this project exists
@@ -83,7 +85,7 @@ GitHub Actions — 7 parallel jobs
 Parallel (PRs + daily):
       static-analysis      Bandit + Semgrep → SARIF → GitHub Security tab
 
-                    ↓ findings fan-out via RabbitMQ ↓
+                    ↓ findings passed in-process to the AI agent layer ↓
 
             ┌──────────────────────────────────────┐
             │      AI AGENT LAYER  (Claude API)    │
@@ -123,7 +125,7 @@ Aircraft Communications Addressing and Reporting System — the ground-to-air me
 
 ### EFB API — `src/simulators/efb_api/efb_app.py`
 
-Flask REST API simulating an Electronic Flight Bag — 12 endpoints across authentication, flight plan CRUD, weather (METAR), performance calculation, and role-gated maintenance access.
+Flask REST API simulating an Electronic Flight Bag — 13 routes across authentication, flight plan CRUD, weather (METAR), performance calculation, and role-gated maintenance access.
 
 **Five intentional, documented vulnerabilities:**
 
@@ -310,13 +312,13 @@ skyguard/
 │   ├── simulators/
 │   │   ├── arinc429_bus.py           # ARINC 429 encoder/decoder + 4 injectors
 │   │   ├── acars_parser.py           # ACARS parser + 6 attack builders
-│   │   └── efb_api/efb_app.py        # Flask EFB — 12 endpoints, 5 documented vulns
+│   │   └── efb_api/efb_app.py        # Flask EFB — 13 routes, 5 documented vulns
 │   └── agents/
 │       ├── pentest_narrator.py       # CVSS + attack chains + remediation plan
 │       ├── threat_modeller.py        # STRIDE model from Gherkin story
 │       └── compliance_mapper.py      # ED-202A / DO-326A gap matrix
 ├── tests/
-│   ├── protocol/                     # 57 tests — ARINC 429 + ACARS
+│   ├── protocol/                     # 82 tests — ARINC 429 + ACARS
 │   ├── fuzzing/                      # 27 tests — Hypothesis property-based
 │   ├── security/                     # 71 tests — EFB attack surface
 │   └── agents/                       # 72 tests — AI agent contracts
@@ -371,7 +373,7 @@ skyguard/
 | AI agents | Claude `claude-sonnet-4-6` | Structured JSON output, versioned prompts |
 | SAST | Bandit + Semgrep | Dual-tool, SARIF output |
 | Reporting | Allure → GitHub Pages | Visual, shareable, zero hosting cost |
-| Event bus | RabbitMQ 3.13 | Enterprise-grade async broker |
+| Event bus | RabbitMQ 3.13 | Local demo infra (docker-compose) — not wired into the agent pipeline |
 | CI/CD | GitHub Actions | Free tier, parallel matrix, OIDC |
 | Containers | Docker Compose | One-command local environment |
 

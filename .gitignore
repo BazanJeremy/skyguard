@@ -17,3 +17,7 @@ allure-report/
 
 # Environment — never commit real keys
 .env
+
+# Internal / portfolio meta — kept local, not published
+CLAUDE.md
+AUDIT-skyguard.md
