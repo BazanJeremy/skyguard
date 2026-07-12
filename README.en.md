@@ -9,7 +9,7 @@
 
 > 🇫🇷 [Version française](README.md)
 
-## Why this project exists
+## The problem
 
 Playwright scripts against a todo app say nothing about validating a critical system. This project answers a different question:
 
@@ -19,125 +19,7 @@ SkyGuard simulates the cybersecurity attack surface of an aircraft's digital sys
 
 The AI doesn't generate test boilerplate. It **reasons about security**: assigns CVSS scores, chains multi-step attacks, maps findings to DO-326A process gaps, and files GitHub Issues when something regresses.
 
----
-
-## 90-second demo
-
-```bash
-git clone https://github.com/BazanJeremy/skyguard.git && cd skyguard
-pip install -r requirements.txt
-
-# Full AI pipeline — fallback mode (no API key needed)
-python demo.py --save
-
-# Full test suite — 252 tests, ~8 seconds
-pytest tests/ -v
-```
-
-With a live API key:
-```bash
-ANTHROPIC_API_KEY=sk-ant-... python demo.py --save
-```
-
-What `demo.py --save` produces in `reports/`:
-- `pentest-report.md` — CVSS scores, attack chains, remediation plan
-- `stride-threat-model.md` — full STRIDE model from a Gherkin story
-- `compliance-matrix.md` — ED-202A gap ratings with corrective actions
-
----
-
-## The project in 30 seconds
-
-| Signal | Where |
-|---|---|
-| 252 tests, 7-job CI pipeline | Badge + Actions tab |
-| AI agents making real QA decisions | `src/agents/` + `demo.py` output |
-| CVSS scoring, STRIDE, ED-202A | `reports/` (pre-generated) |
-| 2 real bugs caught by tests, before any manual review | Section below + commit history |
-| Honest architectural decisions | `docs/ADR-001` → `ADR-003` |
-| One-command environment | `docker compose up` |
-
----
-
-## Architecture
-
-```
-Git commit / PR
-      │
-      ▼
-GitHub Actions — 7 parallel jobs
-      │
-      ├─ quality-gate      Ruff lint + mypy strict (blocks all downstream)
-      ├─ protocol-tests    ARINC 429 + ACARS fuzzing  ──┐
-      ├─ security-tests    EFB API W1–W5 attack suite  ─┤─ matrix: Python 3.11 / 3.12
-      ├─ agent-tests       AI agent output contracts  ──┘
-      │
-      ├─ ai-analysis       Pentest Narrator + Compliance Mapper on findings
-      │                    Quality gate: critical_count ≤ 2 (W2, W4 are expected)
-      │
-      ├─ allure-report     Merge all results → GitHub Pages  (main only)
-      └─ issue-on-failure  Auto-file GitHub Issue on regression  (main only)
-
-Parallel (PRs + daily):
-      static-analysis      Bandit + Semgrep → SARIF → GitHub Security tab
-
-                    ↓ findings passed in-process to the AI agent layer ↓
-
-            ┌──────────────────────────────────────┐
-            │      AI AGENT LAYER  (Claude API)    │
-            ├───────────────┬──────────────────────┤
-            │ Pentest       │ Threat     │ Compliance│
-            │ Narrator      │ Modeller   │ Mapper   │
-            │ CVSS·chains   │ STRIDE     │ ED-202A  │
-            │ remediation   │ from       │ DO-326A  │
-            │ plan          │ Gherkin    │ gap matrix│
-            └───────────────┴──────────────────────┘
-                    ↓
-      pentest-report.md · stride-threat-model.md · compliance-matrix.md · GitHub Issue
-```
-
----
-
-## Simulated attack surface
-
-### ARINC 429 bus — `src/simulators/arinc429_bus.py`
-
-The avionics data bus standard used on A320, B737, and most commercial aircraft since the 1980s. The simulator encodes and decodes 32-bit words (label / SDI / data / SSM / parity) against the public ARINC 429 Mark 33 specification.
-
-**Four attack injectors:**
-
-| Injector | Attack | Safety relevance |
-|---|---|---|
-| `OutOfRangeInjector` | Injects altitude / airspeed outside certified range | Instrument misreading |
-| `ParityCorruptionInjector` | Flips parity bit to bypass integrity check | Silent data corruption |
-| `SSMSpoofingInjector` | Forces NAV labels to `NO_COMPUTED_DATA` | Display blanking / availability |
-| `ReplayAttackGenerator` | Retransmits captured frames with shifted timestamps | Stale data injection |
-
-49 protocol tests + property-based fuzzing via Hypothesis.
-
-### ACARS parser — `src/simulators/acars_parser.py`
-
-Aircraft Communications Addressing and Reporting System — the ground-to-air messaging protocol. Tested with **Hypothesis** (50 000+ generated cases per run). Six `ACARSAttackBuilder` methods simulate: buffer overflow, null byte injection, malformed aircraft address, missing ETX terminator, label field injection, and ATC clearance replay.
-
-### EFB API — `src/simulators/efb_api/efb_app.py`
-
-Flask REST API simulating an Electronic Flight Bag — 13 routes across authentication, flight plan CRUD, weather (METAR), performance calculation, and role-gated maintenance access.
-
-**Five intentional, documented vulnerabilities:**
-
-| ID | Vulnerability | OWASP | CVSS v3.1 | ED-202A |
-|---|---|---|---|---|
-| W1 | No rate limiting on `/auth/token` | A07 | 7.5 HIGH | SO-3: enables brute-force pilot impersonation |
-| W2 | Hardcoded JWT secret exposed via `/debug` | A02 | **9.8 CRITICAL** | SO-3: token forgery → full system compromise |
-| W3 | IDOR — no ownership check on `/flightplans/<id>` | A01 | 8.1 HIGH | SO-3: cross-pilot flight data access |
-| W4 | Unauthenticated `/debug` endpoint | A05 | **9.1 CRITICAL** | SO-3: tokens + env vars + JWT secret exposed |
-| W5 | Stack traces + server info in error responses | A09 | 5.3 MEDIUM | SO-6: reduces exploitation cost |
-
-Each vulnerability is detected by at least 3 dedicated tests. The debug endpoint (W4) disappears automatically when `FLASK_ENV=production` — demonstrating the fix in one environment variable.
-
----
-
-## AI agents
+## How it works
 
 All three agents share the same interface contract:
 - **With `ANTHROPIC_API_KEY`:** calls `claude-sonnet-4-6`, returns AI-reasoned output
@@ -187,32 +69,90 @@ Gap ratings: `🔴 critical_gap` / `🟠 major_gap` / `🟡 minor_gap` / `🟢 c
 
 > ⚠️ **Scope disclaimer:** This agent demonstrates the *logic and vocabulary* of ED-202A compliance mapping — it is not a formal compliance assessment. Real DO-326A certification requires engagement with an EASA-approved Design Organisation. See [ADR-003](docs/ADR-003-compliance-scope.md) for the full rationale.
 
----
-
-## Test suite
+## Architecture
 
 ```
-252 passed, 6 skipped   (~8 seconds · no API key needed)
+Git commit / PR
+      │
+      ▼
+GitHub Actions — 7 parallel jobs
+      │
+      ├─ quality-gate      Ruff lint + mypy strict (blocks all downstream)
+      ├─ protocol-tests    ARINC 429 + ACARS fuzzing  ──┐
+      ├─ security-tests    EFB API W1–W5 attack suite  ─┤─ matrix: Python 3.11 / 3.12
+      ├─ agent-tests       AI agent output contracts  ──┘
+      │
+      ├─ ai-analysis       Pentest Narrator + Compliance Mapper on findings
+      │                    Quality gate: critical_count ≤ 2 (W2, W4 are expected)
+      │
+      ├─ allure-report     Merge all results → GitHub Pages  (main only)
+      └─ issue-on-failure  Auto-file GitHub Issue on regression  (main only)
+
+Parallel (PRs + daily):
+      static-analysis      Bandit + Semgrep → SARIF → GitHub Security tab
+
+                    ↓ findings passed in-process to the AI agent layer ↓
+
+            ┌──────────────────────────────────────┐
+            │      AI AGENT LAYER  (Claude API)    │
+            ├───────────────┬──────────────────────┤
+            │ Pentest       │ Threat     │ Compliance│
+            │ Narrator      │ Modeller   │ Mapper   │
+            │ CVSS·chains   │ STRIDE     │ ED-202A  │
+            │ remediation   │ from       │ DO-326A  │
+            │ plan          │ Gherkin    │ gap matrix│
+            └───────────────┴──────────────────────┘
+                    ↓
+      pentest-report.md · stride-threat-model.md · compliance-matrix.md · GitHub Issue
 ```
 
-| Layer | File(s) | Tests | What's covered |
-|---|---|---|---|
-| Protocol | `tests/protocol/` | 82 | ARINC 429 encode/decode, BNR, parity, 4 injectors; ACARS parser, 6 attack builders |
-| Fuzzing | `tests/fuzzing/` | 27 | Hypothesis: parser never crashes, return type invariant, idempotence, batch consistency |
-| Security | `tests/security/test_efb_api.py` | 71 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration |
-| Agents | `tests/agents/test_agents.py` | 72 | Output contracts, fallback behaviour, edge cases, Markdown rendering, pipeline integration |
-| Live (skipped) | `tests/agents/test_agents.py` | 6 | Claude API call validation — activated with `ANTHROPIC_API_KEY` |
+## The project in 30 seconds
 
-Run a specific layer:
-```bash
-pytest tests/protocol/ -v -m protocol        # ARINC 429 + ACARS
-pytest tests/fuzzing/  -v -m fuzzing         # Hypothesis (generates 50k+ cases)
-pytest tests/security/ -v -m security        # EFB attack surface
-pytest tests/agents/   -v -m agents          # AI agents (fallback mode)
-pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_API_KEY)
-```
+| Signal | Where |
+|---|---|
+| 252 tests, 7-job CI pipeline | Badge + Actions tab |
+| AI agents making real QA decisions | `src/agents/` + `demo.py` output |
+| CVSS scoring, STRIDE, ED-202A | `reports/` (pre-generated) |
+| 2 real bugs caught by tests, before any manual review | Section below + commit history |
+| Honest architectural decisions | `docs/ADR-001` → `ADR-003` |
+| One-command environment | `docker compose up` |
 
----
+## Simulated attack surface
+
+### ARINC 429 bus — `src/simulators/arinc429_bus.py`
+
+The avionics data bus standard used on A320, B737, and most commercial aircraft since the 1980s. The simulator encodes and decodes 32-bit words (label / SDI / data / SSM / parity) against the public ARINC 429 Mark 33 specification.
+
+**Four attack injectors:**
+
+| Injector | Attack | Safety relevance |
+|---|---|---|
+| `OutOfRangeInjector` | Injects altitude / airspeed outside certified range | Instrument misreading |
+| `ParityCorruptionInjector` | Flips parity bit to bypass integrity check | Silent data corruption |
+| `SSMSpoofingInjector` | Forces NAV labels to `NO_COMPUTED_DATA` | Display blanking / availability |
+| `ReplayAttackGenerator` | Retransmits captured frames with shifted timestamps | Stale data injection |
+
+49 protocol tests + property-based fuzzing via Hypothesis.
+
+### ACARS parser — `src/simulators/acars_parser.py`
+
+Aircraft Communications Addressing and Reporting System — the ground-to-air messaging protocol. Tested with **Hypothesis** (50 000+ generated cases per run). Six `ACARSAttackBuilder` methods simulate: buffer overflow, null byte injection, malformed aircraft address, missing ETX terminator, label field injection, and ATC clearance replay.
+
+### EFB API — `src/simulators/efb_api/efb_app.py`
+
+Flask REST API simulating an Electronic Flight Bag — 13 routes across authentication, flight plan CRUD, weather (METAR), performance calculation, and role-gated maintenance access.
+
+**Five intentional, documented vulnerabilities:**
+
+| ID | Vulnerability | OWASP | CVSS v3.1 | ED-202A |
+|---|---|---|---|---|
+| W1 | No rate limiting on `/auth/token` | A07 | 7.5 HIGH | SO-3: enables brute-force pilot impersonation |
+| W2 | Hardcoded JWT secret exposed via `/debug` | A02 | **9.8 CRITICAL** | SO-3: token forgery → full system compromise |
+| W3 | IDOR — no ownership check on `/flightplans/<id>` | A01 | 8.1 HIGH | SO-3: cross-pilot flight data access |
+| W4 | Unauthenticated `/debug` endpoint | A05 | **9.1 CRITICAL** | SO-3: tokens + env vars + JWT secret exposed |
+| W5 | Stack traces + server info in error responses | A09 | 5.3 MEDIUM | SO-6: reduces exploitation cost |
+
+Each vulnerability is detected by at least 3 dedicated tests. The debug endpoint (W4) disappears automatically when `FLASK_ENV=production` — demonstrating the fix in one environment variable.
 
 ## Bugs caught by tests — before any manual review
 
@@ -233,8 +173,6 @@ pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_A
 **Root cause:** Same unhandled `ValueError` path as Bug 1.  
 **Fix:** Same `try/except` block — both bugs fixed together.  
 **Why it matters:** *The type confusion test was designed to probe the boundary between 400 and 500 responses. Finding Bug 1 on nulls was expected. Bug 2 on arbitrary strings exposed that the error was in the conversion, not the validation — a subtle distinction that matters for error handling design.*
-
----
 
 ## CI/CD pipeline
 
@@ -258,26 +196,68 @@ Every push triggers two workflows:
 
 The intentional weaknesses W2 (hardcoded secret) and W4 (debug endpoint) surface in Bandit with `--exit-zero` — documented in [ADR-003](docs/ADR-003-compliance-scope.md) as expected findings, not regressions.
 
----
+## Regulatory references
 
-## Local environment
+| Standard | Role in this project |
+|---|---|
+| **EASA ED-202A** | Airworthiness Security Process — SO-1…SO-6 objectives used for finding classification |
+| **DO-326A** | Airworthiness Security Methods — Section references used in compliance matrix |
+| **ARINC 429** | Mark 33 DITS — public spec used for bus simulation frame structure |
+| **ARINC 618** | AGC protocol — basis for ACARS message format simulation |
+| **OWASP Top 10** | W1–W5 mapped to A01, A02, A05, A07, A09 |
+| **CVSS v3.1** | Scoring standard used by Pentest Narrator agent |
 
-**Tests only** (no Docker):
+> **Disclaimer:** SkyGuard is an academic simulation, not a production security tool. No certified avionics systems, real aircraft data, or production environments are involved. The compliance mapping is illustrative — see [ADR-003](docs/ADR-003-compliance-scope.md).
+
+## Stack
+
+| Layer | Tool | Notes |
+|---|---|---|
+| Language | Python 3.11 / 3.12 | Typed dataclasses throughout |
+| API simulator | Flask 3.x | Lightweight, ZAP-compatible |
+| Test runner | Pytest 9.x | Allure plugin, rich markers |
+| Property testing | Hypothesis | 50 000+ cases per fuzzing session |
+| AI agents | Claude `claude-sonnet-4-6` | Structured JSON output, versioned prompts |
+| SAST | Bandit + Semgrep | Dual-tool, SARIF output |
+| Reporting | Allure → GitHub Pages | Visual, shareable, zero hosting cost |
+| Event bus | RabbitMQ 3.13 | Local demo infra (docker-compose) — not wired into the agent pipeline |
+| CI/CD | GitHub Actions | Free tier, parallel matrix, OIDC |
+| Containers | Docker Compose | One-command local environment |
+
+All tools are **free and open-source**.
+
+## Quickstart
+
 ```bash
+git clone https://github.com/BazanJeremy/skyguard.git && cd skyguard
 pip install -r requirements.txt
-pytest tests/ -v
+
+# Full AI pipeline — fallback mode (no API key needed)
 python demo.py --save
+
+# Full test suite — 252 tests, ~8 seconds
+pytest tests/ -v
+```
+
+With a live API key:
+```bash
+ANTHROPIC_API_KEY=sk-ant-... python demo.py --save
+```
+
+What `demo.py --save` produces in `reports/`:
+- `pentest-report.md` — CVSS scores, attack chains, remediation plan
+- `stride-threat-model.md` — full STRIDE model from a Gherkin story
+- `compliance-matrix.md` — ED-202A gap ratings with corrective actions
+
+**Demo the W4 fix:**
+```bash
+FLASK_ENV=production python demo.py   # /debug endpoint returns 404
 ```
 
 **Full environment** (EFB API + RabbitMQ):
 ```bash
 cp .env.example .env        # set ANTHROPIC_API_KEY if you have one
 docker compose up           # EFB API → :5050 · RabbitMQ UI → :15672
-```
-
-**Demo the W4 fix:**
-```bash
-FLASK_ENV=production python demo.py   # /debug endpoint returns 404
 ```
 
 ### Environment variables
@@ -288,7 +268,45 @@ FLASK_ENV=production python demo.py   # /debug endpoint returns 404
 | `FLASK_ENV` | No | `production` disables `/debug` (W4 remediation demo) |
 | `RABBITMQ_HOST` | No | RabbitMQ connection (default: `localhost`) |
 
----
+## Design decisions
+
+| ADR | Decision | Why it matters |
+|---|---|---|
+| [ADR-001](docs/ADR-001-protocol-simulation.md) | Pure Python protocol simulation | Hardware-independent, CI-compatible, Hypothesis-testable |
+| [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude API + deterministic fallback | CI never blocked; live mode enhances without depending |
+| [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper is illustrative, not certifying | Honest scope framing signals domain awareness |
+
+## Test strategy
+
+```
+252 passed, 6 skipped   (~8 seconds · no API key needed)
+```
+
+| Layer | File(s) | Tests | What's covered |
+|---|---|---|---|
+| Protocol | `tests/protocol/` | 82 | ARINC 429 encode/decode, BNR, parity, 4 injectors; ACARS parser, 6 attack builders |
+| Fuzzing | `tests/fuzzing/` | 27 | Hypothesis: parser never crashes, return type invariant, idempotence, batch consistency |
+| Security | `tests/security/test_efb_api.py` | 71 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration |
+| Agents | `tests/agents/test_agents.py` | 72 | Output contracts, fallback behaviour, edge cases, Markdown rendering, pipeline integration |
+| Live (skipped) | `tests/agents/test_agents.py` | 6 | Claude API call validation — activated with `ANTHROPIC_API_KEY` |
+
+Run a specific layer:
+```bash
+pytest tests/protocol/ -v -m protocol        # ARINC 429 + ACARS
+pytest tests/fuzzing/  -v -m fuzzing         # Hypothesis (generates 50k+ cases)
+pytest tests/security/ -v -m security        # EFB attack surface
+pytest tests/agents/   -v -m agents          # AI agents (fallback mode)
+pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_API_KEY)
+```
+
+## Known limitations
+
+> **SkyGuard is an academic simulation, NOT a production security tool.** It is a QA × security method applied end to end, not a pentest product.
+
+- No real aircraft data, no certified avionics system, and no production environment is involved.
+- The ED-202A / DO-326A mapping is **illustrative, not certifying**: real certification requires engagement with an EASA-approved organisation (see [ADR-003](docs/ADR-003-compliance-scope.md)).
+- The W1–W5 weaknesses and protocol attacks are **intentional**: they are a documented test target, not code examples to reuse.
+- RabbitMQ (in `docker-compose.yml`) is demo infrastructure; it is not wired into the agent pipeline, which runs in-memory via `demo.py`.
 
 ## Project structure
 
@@ -331,52 +349,6 @@ skyguard/
 └── pytest.ini
 ```
 
----
-
-## Regulatory references
-
-| Standard | Role in this project |
-|---|---|
-| **EASA ED-202A** | Airworthiness Security Process — SO-1…SO-6 objectives used for finding classification |
-| **DO-326A** | Airworthiness Security Methods — Section references used in compliance matrix |
-| **ARINC 429** | Mark 33 DITS — public spec used for bus simulation frame structure |
-| **ARINC 618** | AGC protocol — basis for ACARS message format simulation |
-| **OWASP Top 10** | W1–W5 mapped to A01, A02, A05, A07, A09 |
-| **CVSS v3.1** | Scoring standard used by Pentest Narrator agent |
-
-> **Disclaimer:** SkyGuard is an academic simulation, not a production security tool. No certified avionics systems, real aircraft data, or production environments are involved. The compliance mapping is illustrative — see [ADR-003](docs/ADR-003-compliance-scope.md).
-
----
-
-## Architecture decisions
-
-| ADR | Decision | Why it matters |
-|---|---|---|
-| [ADR-001](docs/ADR-001-protocol-simulation.md) | Pure Python protocol simulation | Hardware-independent, CI-compatible, Hypothesis-testable |
-| [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude API + deterministic fallback | CI never blocked; live mode enhances without depending |
-| [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper is illustrative, not certifying | Honest scope framing signals domain awareness |
-
----
-
-## Stack
-
-| Layer | Tool | Notes |
-|---|---|---|
-| Language | Python 3.11 / 3.12 | Typed dataclasses throughout |
-| API simulator | Flask 3.x | Lightweight, ZAP-compatible |
-| Test runner | Pytest 9.x | Allure plugin, rich markers |
-| Property testing | Hypothesis | 50 000+ cases per fuzzing session |
-| AI agents | Claude `claude-sonnet-4-6` | Structured JSON output, versioned prompts |
-| SAST | Bandit + Semgrep | Dual-tool, SARIF output |
-| Reporting | Allure → GitHub Pages | Visual, shareable, zero hosting cost |
-| Event bus | RabbitMQ 3.13 | Local demo infra (docker-compose) — not wired into the agent pipeline |
-| CI/CD | GitHub Actions | Free tier, parallel matrix, OIDC |
-| Containers | Docker Compose | One-command local environment |
-
-All tools are **free and open-source**.
-
----
-
 ## Related projects
 
 These tools share the same principles: **deterministic first, AI where it earns its place — the QA stays the arbiter.** All run locally, no API keys required.
@@ -389,6 +361,8 @@ These tools share the same principles: **deterministic first, AI where it earns 
 | [Anomaly Sentinel](https://github.com/BazanJeremy/anomaly-sentinel) | Testing AI anomaly-detection systems (medtech · fintech) |
 | [TestScribe](https://github.com/BazanJeremy/testscribe) | AI-assisted bug report enrichment |
 | [SkyGuard](https://github.com/BazanJeremy/skyguard) **← this repo** | Security quality gate for critical avionics systems |
+
+## Author
 
 *Built by Jérémy Bazan — QA Engineer · ISTQB Foundation v4 · bilingual FR/EN · Lyon, France*  
 *Open to QA Lead / SDET / QA Architect roles — Switzerland · Full remote international*

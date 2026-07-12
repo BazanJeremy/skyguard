@@ -9,17 +9,21 @@
 
 > 🇬🇧 [English version](README.en.md)
 
-## Le problème de validation qualité
+## Le problème
 
 Du Playwright sur une *todo app* ne dit rien de la validation d'un système critique. SkyGuard répond à une autre question : **comment valider la qualité et la sécurité d'un système numérique critique, quand une régression peut avoir des conséquences safety ?**
 
 Le projet applique la rigueur QA d'un système régulé à une surface d'attaque avionique **simulée** — la tablette EFB du pilote, le bus de données ARINC 429, la messagerie sol-air ACARS — et en fait un **quality gate** exécuté automatiquement : fuzzing, scénarios d'attaque alignés OWASP, threat modeling STRIDE, et couverture des risques tracée jusqu'aux objectifs réglementaires ED-202A / DO-326A.
 
----
-
-## L'approche : 3 agents IA + STRIDE
+## Comment ça marche
 
 Les trois couches simulées produisent des *findings* de sécurité (contrat commun `SecurityFinding`). Trois agents IA spécialisés les transforment en livrables de qualité. Chacun dispose d'un **fallback déterministe** : la suite de tests et la CI restent vertes **sans aucune clé API**.
+
+- **Pentest Narrator** — `list[SecurityFinding]` → scores CVSS v3.1 (avec vecteurs), chaînes d'attaque multi-étapes, plan de remédiation priorisé, mapping ED-202A.
+- **Threat Modeller** — une *User Story* au format Gherkin → modèle STRIDE (les 6 catégories), arbres d'attaque, noms de tests suggérés en convention pytest.
+- **Compliance Mapper** — `list[SecurityFinding]` → matrice ED-202A (SO-1…SO-6) / DO-326A, notation des écarts (🔴 critique → 🟢 conforme), actions correctives.
+
+## Architecture
 
 ```
                        Surface d'attaque simulée
@@ -46,11 +50,16 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
   Coordination via demo.py — contrat commun, pas d'orchestration réseau.
 ```
 
-- **Pentest Narrator** — `list[SecurityFinding]` → scores CVSS v3.1 (avec vecteurs), chaînes d'attaque multi-étapes, plan de remédiation priorisé, mapping ED-202A.
-- **Threat Modeller** — une *User Story* au format Gherkin → modèle STRIDE (les 6 catégories), arbres d'attaque, noms de tests suggérés en convention pytest.
-- **Compliance Mapper** — `list[SecurityFinding]` → matrice ED-202A (SO-1…SO-6) / DO-326A, notation des écarts (🔴 critique → 🟢 conforme), actions correctives.
+## Le projet en 30 secondes
 
----
+| Signal | Où |
+|---|---|
+| 252 tests, pipeline CI à 7 jobs | Badge + onglet Actions |
+| Des agents IA qui prennent de vraies décisions QA | `src/agents/` + sortie de `demo.py` |
+| Scoring CVSS, STRIDE, ED-202A | `reports/` (pré-générés) |
+| 2 bugs réels attrapés par les tests, avant toute revue manuelle | [version anglaise](README.en.md) + historique de commits |
+| Décisions d'architecture honnêtes | `docs/ADR-001` → `ADR-003` |
+| Environnement en une commande | `docker compose up` |
 
 ## Un scénario concret, de bout en bout
 
@@ -62,39 +71,6 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
 
 **Livrables produits** dans `reports/` : `pentest-report.md`, `stride-threat-model.md`, `compliance-matrix.md`.
 Le correctif se démontre en une variable d'environnement : `FLASK_ENV=production` fait disparaître l'endpoint `/debug` (W4).
-
----
-
-## Lancer la démo en local
-
-```bash
-git clone https://github.com/BazanJeremy/skyguard.git && cd skyguard
-pip install -r requirements.txt
-
-# Pipeline IA complet — mode fallback, aucune clé requise
-python demo.py --save
-
-# Suite complète — 252 tests, ~8 s
-python -m pytest
-```
-
-Avec une clé API (analyse IA « live ») :
-```bash
-ANTHROPIC_API_KEY=sk-ant-... python demo.py --save
-```
-
-Démonstration du correctif W4 :
-```bash
-FLASK_ENV=production python demo.py   # l'endpoint /debug renvoie 403
-```
-
-Environnement complet (API EFB conteneurisée) :
-```bash
-cp .env.example .env
-docker compose up            # API EFB → http://localhost:5050
-```
-
----
 
 ## Surface d'attaque simulée
 
@@ -123,8 +99,6 @@ docker compose up            # API EFB → http://localhost:5050
 | Sécurité (API EFB, W1–W5) | 71 |
 | Agents IA (contrats, fallback, rendu) | 72 |
 
----
-
 ## Stack technique
 
 | Rôle | Outil |
@@ -140,20 +114,36 @@ docker compose up            # API EFB → http://localhost:5050
 
 Tous les outils sont **libres et open-source**.
 
----
+## Démarrage rapide
 
-## Limites explicites
+```bash
+git clone https://github.com/BazanJeremy/skyguard.git && cd skyguard
+pip install -r requirements.txt
 
-> **SkyGuard est une simulation académique, PAS un outil de sécurité de production.** C'est une **méthode** QA × sécurité appliquée de bout en bout, pas un produit de pentest.
+# Pipeline IA complet — mode fallback, aucune clé requise
+python demo.py --save
 
-- Aucune donnée d'avion réelle, aucun système avionique certifié, aucun environnement de production n'est impliqué.
-- Le mapping ED-202A / DO-326A est **illustratif, pas certifiant** : une vraie certification exige l'engagement d'un organisme agréé EASA (voir [ADR-003](docs/ADR-003-compliance-scope.md)).
-- Les faiblesses W1–W5 et les attaques protocolaires sont **volontaires** : elles servent de cible de test documentée, pas d'exemples de code à réutiliser.
-- RabbitMQ (dans `docker-compose.yml`) est une infra de démonstration ; il n'est pas câblé au pipeline d'agents, qui s'exécute en mémoire via `demo.py`.
+# Suite complète — 252 tests, ~8 s
+python -m pytest
+```
 
----
+Avec une clé API (analyse IA « live ») :
+```bash
+ANTHROPIC_API_KEY=sk-ant-... python demo.py --save
+```
 
-## Décisions d'architecture
+Démonstration du correctif W4 :
+```bash
+FLASK_ENV=production python demo.py   # l'endpoint /debug renvoie 403
+```
+
+Environnement complet (API EFB conteneurisée) :
+```bash
+cp .env.example .env
+docker compose up            # API EFB → http://localhost:5050
+```
+
+## Décisions de conception
 
 | ADR | Décision | Pourquoi c'est important |
 |---|---|---|
@@ -161,7 +151,14 @@ Tous les outils sont **libres et open-source**.
 | [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude + fallback déterministe | La CI n'est jamais bloquée par une clé manquante |
 | [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper illustratif, pas certifiant | Cadrage honnête = signal de maturité sur le domaine régulé |
 
----
+## Limites connues
+
+> **SkyGuard est une simulation académique, PAS un outil de sécurité de production.** C'est une **méthode** QA × sécurité appliquée de bout en bout, pas un produit de pentest.
+
+- Aucune donnée d'avion réelle, aucun système avionique certifié, aucun environnement de production n'est impliqué.
+- Le mapping ED-202A / DO-326A est **illustratif, pas certifiant** : une vraie certification exige l'engagement d'un organisme agréé EASA (voir [ADR-003](docs/ADR-003-compliance-scope.md)).
+- Les faiblesses W1–W5 et les attaques protocolaires sont **volontaires** : elles servent de cible de test documentée, pas d'exemples de code à réutiliser.
+- RabbitMQ (dans `docker-compose.yml`) est une infra de démo ; il n'est pas câblé au pipeline d'agents, qui s'exécute en mémoire via `demo.py`.
 
 ## Projets associés
 
@@ -182,7 +179,5 @@ Ces outils partagent les mêmes principes : **le déterministe d'abord, l'IA là
 Validation de systèmes critiques, automatisation de test, quality gates orientés IA.
 
 🔗 [linkedin.com/in/jeremy-bazan](https://www.linkedin.com/in/jeremy-bazan/)
-
----
 
 *SkyGuard — Licence [MIT](LICENSE).*
