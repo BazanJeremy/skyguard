@@ -8,7 +8,7 @@
 
 ## Context
 
-The Compliance Mapper agent maps EFB security findings to EASA ED-202A security objectives and DO-326A process sections. This raises an important question: what does "compliance mapping" mean in a portfolio project, and how should its scope be communicated?
+The Compliance Mapper agent maps EFB security findings to EASA ED-202A security objectives and DO-326A process sections. This raises an important question: what does "compliance mapping" mean in a solo simulation project, and how should its scope be communicated?
 
 Two failure modes to avoid:
 
@@ -35,7 +35,7 @@ Real airworthiness security certification under DO-326A / ED-202A involves:
 - Aircraft-level integration and activation (Section 8)
 - Continued airworthiness monitoring (Section 9)
 
-None of this is achievable in a solo portfolio project.
+None of this is achievable in a solo project.
 
 ### What this project *does* demonstrate
 
@@ -45,7 +45,7 @@ The Compliance Mapper demonstrates:
 - **Gap rating logic:** distinguishing critical_gap (violates an SO with safety impact) from minor_gap (reduces exploitation cost without creating a primary vulnerability).
 - **AI-assisted regulatory analysis:** a concrete, defensible use case for LLM in a regulated-industry QA context.
 
-### Why honest framing strengthens rather than weakens the portfolio
+### Why honest framing strengthens rather than weakens the project
 
 A candidate who says *"my Compliance Mapper demonstrates the mapping logic of ED-202A — not a formal certification"* shows:
 - Domain awareness (they know what real certification requires)
@@ -62,13 +62,13 @@ This is more credible to a hiring manager at Safran or Airbus than overclaiming.
 | Risk assessment | CVSS + ED-202A mapping | Security Risk Assessment with probability/severity matrix |
 | Verification | Pytest test suite | Independent verification per Section 8 |
 | Scope | Flask EFB API simulation | Full aircraft system including hardware, firmware, ground systems |
-| Authority | Portfolio documentation | DOA holder + EASA approval |
+| Authority | Project documentation | DOA holder + EASA approval |
 
 ## Consequences
 
 - All agent outputs carry the scope disclaimer.
 - The README includes a prominent disclaimer box.
-- Interviewers who probe on regulatory depth will find a candidate who knows the boundaries.
+- Anyone who probes on regulatory depth will find an author who knows the boundaries.
 - The mapping logic is genuine and defensible — this is not hand-waving.
 
 ## References

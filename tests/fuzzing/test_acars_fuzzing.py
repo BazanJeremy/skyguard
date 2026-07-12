@@ -8,8 +8,8 @@ This is the SkyGuard equivalent of a protocol fuzzing campaign.
 In a regulated context (DO-326A §6.3), this satisfies the requirement:
 "Test the security functions with boundary and invalid inputs."
 
-Portfolio note: property-based testing is rarely seen in QA portfolios.
-This demonstrates mastery of advanced test design beyond happy-path suites.
+Note: property-based testing is rarely seen in day-to-day QA suites.
+It exercises advanced test design beyond happy-path checks.
 """
 
 import string

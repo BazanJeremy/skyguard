@@ -17,8 +17,8 @@ Security intentional weaknesses (for testing purposes):
   W4 — /api/v1/debug endpoint exposes server internals in non-prod
   W5 — Stack traces returned in error responses (information disclosure)
 
-These are INTENTIONAL for QA demonstration. Document them, test them,
-then show the fix. That is the portfolio story.
+These are INTENTIONAL test targets. Document them, test them,
+then show the fix. That is the point of this simulator.
 
 Run: flask --app efb_app run --port 5050
 """

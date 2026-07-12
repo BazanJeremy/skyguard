@@ -29,7 +29,7 @@ Ollama is attractive for local-only, zero-cost usage. However:
 
 - A 7B parameter model running on CPU produces unreliable structured JSON — critical for agents that must return parseable `PentestReport`, `STRIDEModel`, and `ComplianceMatrix` objects.
 - CVSS scoring, STRIDE categorisation, and ED-202A mapping require nuanced domain reasoning that smaller models handle poorly.
-- Portfolio context: demonstrating production-grade AI integration (managed API, structured output, versioned prompts) is more credible than local inference for a QA Lead / SDET role.
+- Project context: demonstrating production-grade AI integration (managed API, structured output, versioned prompts) is more credible than local inference for a QA Lead / SDET role.
 
 Ollama remains the recommended local fallback for users who cannot use the API — documented in `.env.example`.
 
@@ -38,7 +38,7 @@ Ollama remains the recommended local fallback for users who cannot use the API �
 Both are viable. Claude was chosen because:
 - The project is built with Claude's assistance (consistency of toolchain).
 - `claude-sonnet-4-6` has strong structured output reliability on security domain tasks.
-- Anthropic's rate limits on the free tier are sufficient for portfolio demonstration.
+- Anthropic's rate limits on the free tier are sufficient for this project's demo needs.
 
 This decision has low switching cost — the agent interface is model-agnostic; changing the model requires one line.
 

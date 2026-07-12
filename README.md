@@ -132,7 +132,7 @@ Avec une clé API (analyse IA « live ») :
 ANTHROPIC_API_KEY=sk-ant-... python demo.py --save
 ```
 
-Démonstration du correctif W4 :
+Démo du correctif W4 :
 ```bash
 FLASK_ENV=production python demo.py   # l'endpoint /debug renvoie 403
 ```

@@ -20,7 +20,7 @@ SkyGuard needs a realistic attack surface to demonstrate cybersecurity QA techni
 
 ## Rationale
 
-**Hardware independence.** A portfolio project must run on any developer machine, in CI, and in a reviewer's environment without specialised hardware. A USB ARINC adapter costs €800–€3000 and is not available as a GitHub Actions runner.
+**Hardware independence.** This project must run on any developer machine, in CI, and in a reviewer's environment without specialised hardware. A USB ARINC adapter costs €800–€3000 and is not available as a GitHub Actions runner.
 
 **Spec fidelity is sufficient for QA purposes.** The attack surface under test — bit-level frame encoding, parity computation, label catalog validation, and SSM field semantics — is fully specified in public documents. The simulation faithfully implements:
 - 32-bit frame structure (label 8b / SDI 2b / data 19b / SSM 2b / parity 1b)
