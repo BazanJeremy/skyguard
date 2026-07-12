@@ -11,7 +11,7 @@
 
 ## Le problème de validation qualité
 
-La plupart des portfolios QA montrent du Playwright sur une *todo app*. SkyGuard répond à une autre question : **comment valider la qualité et la sécurité d'un système numérique critique, quand une régression peut avoir des conséquences safety ?**
+Du Playwright sur une *todo app* ne dit rien de la validation d'un système critique. SkyGuard répond à une autre question : **comment valider la qualité et la sécurité d'un système numérique critique, quand une régression peut avoir des conséquences safety ?**
 
 Le projet applique la rigueur QA d'un système régulé à une surface d'attaque avionique **simulée** — la tablette EFB du pilote, le bus de données ARINC 429, la messagerie sol-air ACARS — et en fait un **quality gate** exécuté automatiquement : fuzzing, scénarios d'attaque alignés OWASP, threat modeling STRIDE, et couverture des risques tracée jusqu'aux objectifs réglementaires ED-202A / DO-326A.
 
@@ -144,7 +144,7 @@ Tous les outils sont **libres et open-source**.
 
 ## Limites explicites
 
-> **SkyGuard est une simulation académique, PAS un outil de sécurité de production.** C'est une démonstration de **méthode** QA × sécurité, pas un produit de pentest.
+> **SkyGuard est une simulation académique, PAS un outil de sécurité de production.** C'est une **méthode** QA × sécurité appliquée de bout en bout, pas un produit de pentest.
 
 - Aucune donnée d'avion réelle, aucun système avionique certifié, aucun environnement de production n'est impliqué.
 - Le mapping ED-202A / DO-326A est **illustratif, pas certifiant** : une vraie certification exige l'engagement d'un organisme agréé EASA (voir [ADR-003](docs/ADR-003-compliance-scope.md)).
@@ -172,4 +172,4 @@ Validation de systèmes critiques, automatisation de test, quality gates orient�
 
 ---
 
-*SkyGuard — projet portfolio QA × sécurité. Licence [MIT](LICENSE).*
+*SkyGuard — Licence [MIT](LICENSE).*

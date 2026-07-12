@@ -11,7 +11,7 @@
 
 ## Why this project exists
 
-Most QA portfolios show Playwright scripts against a todo app. This one answers a different question:
+Playwright scripts against a todo app say nothing about validating a critical system. This project answers a different question:
 
 > *"What does AI-driven quality assurance look like when the domain has safety consequences?"*
 
@@ -46,7 +46,7 @@ What `demo.py --save` produces in `reports/`:
 
 ---
 
-## What an interviewer sees in 30 seconds
+## The project in 30 seconds
 
 | Signal | Where |
 |---|---|
@@ -216,7 +216,7 @@ pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_A
 
 ## Bugs caught by tests — before any manual review
 
-*These are the stories that land in interviews.*
+*The suite found these on its own; the commit history tells the story.*
 
 ### Bug 1 — `int(None)` → HTTP 500 on flight plan creation
 
@@ -232,7 +232,7 @@ pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_A
 **Symptom:** String value for `cruise_fl` returned HTTP 500 instead of 400/422.  
 **Root cause:** Same unhandled `ValueError` path as Bug 1.  
 **Fix:** Same `try/except` block — both bugs fixed together.  
-**Interview angle:** *"The type confusion test was designed to probe the boundary between 400 and 500 responses. Finding Bug 1 on nulls was expected. Bug 2 on arbitrary strings exposed that the error was in the conversion, not the validation — a subtle distinction that matters for error handling design."*
+**Why it matters:** *The type confusion test was designed to probe the boundary between 400 and 500 responses. Finding Bug 1 on nulls was expected. Bug 2 on arbitrary strings exposed that the error was in the conversion, not the validation — a subtle distinction that matters for error handling design.*
 
 ---
 
@@ -344,7 +344,7 @@ skyguard/
 | **OWASP Top 10** | W1–W5 mapped to A01, A02, A05, A07, A09 |
 | **CVSS v3.1** | Scoring standard used by Pentest Narrator agent |
 
-> **Disclaimer:** SkyGuard is a QA portfolio project. No certified avionics systems, real aircraft data, or production environments are involved. The compliance mapping is illustrative — see [ADR-003](docs/ADR-003-compliance-scope.md).
+> **Disclaimer:** SkyGuard is an academic simulation, not a production security tool. No certified avionics systems, real aircraft data, or production environments are involved. The compliance mapping is illustrative — see [ADR-003](docs/ADR-003-compliance-scope.md).
 
 ---
 
