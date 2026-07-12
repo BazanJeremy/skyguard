@@ -57,7 +57,7 @@ jobs:
             --exit-zero       # don't fail — we expect intentional weaknesses
           # Note: --exit-zero because the EFB simulator intentionally contains
           # vulnerabilities (W2: hardcoded secret, W4: debug endpoint).
-          # These are documented as portfolio findings, not production code.
+          # These are documented as intentional findings, not production code.
 
       - name: Print Bandit summary (human-readable)
         run: |
