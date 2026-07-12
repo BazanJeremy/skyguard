@@ -377,5 +377,18 @@ All tools are **free and open-source**.
 
 ---
 
+## Related projects
+
+These tools share the same principles: **deterministic first, AI where it earns its place — the QA stays the arbiter.** All run locally, no API keys required.
+
+| Project | Focus |
+|---|---|
+| [EvalForge](https://github.com/BazanJeremy/EvalForge) | LLM evaluation & judge calibration |
+| [ReleaseGuard](https://github.com/BazanJeremy/ReleaseGuard) | Explainable GO/NO-GO release gate |
+| [FlakySense](https://github.com/BazanJeremy/flakysense) | Statistical flaky-test diagnosis |
+| [Anomaly Sentinel](https://github.com/BazanJeremy/anomaly-sentinel) | Testing AI anomaly-detection systems (medtech · fintech) |
+| [TestScribe](https://github.com/BazanJeremy/testscribe) | AI-assisted bug report enrichment |
+| [SkyGuard](https://github.com/BazanJeremy/skyguard) **← this repo** | Security quality gate for critical avionics systems |
+
 *Built by Jérémy Bazan — QA Engineer · ISTQB Foundation v4 · bilingual FR/EN · Lyon, France*  
 *Open to QA Lead / SDET / QA Architect roles — Switzerland · Full remote international*
