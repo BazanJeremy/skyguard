@@ -1,17 +1,13 @@
-# SkyGuard — Avionics Cybersecurity QA Platform
+# SkyGuard
 
-> **Simulates the digital attack surface of a commercial aircraft and deploys three autonomous AI agents to detect threats, model risks with STRIDE, and map findings to EASA ED-202A — fully automated on every commit.**
+**AI-augmented security quality gate for critical digital systems: SkyGuard simulates the digital attack surface of a commercial aircraft and deploys three autonomous AI agents to detect threats, model risks with STRIDE, and map findings to EASA ED-202A — fully automated on every commit.**
 
 [![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
-[![Tests](https://img.shields.io/badge/tests-252%20passing%20%7C%206%20skipped-brightgreen?logo=pytest)]()
+[![Tests](https://img.shields.io/badge/tests-252%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
-[![AI](https://img.shields.io/badge/AI%20agents-3%20×%20Claude%20Sonnet-8B5CF6?logo=anthropic)](src/agents/)
-[![SAST](https://img.shields.io/badge/SAST-Bandit%20%2B%20Semgrep-orange)](.github/workflows/static-analysis.yml)
-[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-> 🇫🇷 **Version française : [README.md](README.md)**
-
----
+> 🇫🇷 [Version française](README.md)
 
 ## Why this project exists
 

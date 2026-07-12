@@ -1,16 +1,13 @@
-# SkyGuard — Quality gate sécurité pour systèmes numériques critiques
+# SkyGuard
 
-> **Plateforme QA × sécurité augmentée par l'IA : elle simule la surface d'attaque des systèmes numériques d'un avion commercial, puis rejoue à chaque commit un threat modeling STRIDE assisté, un scoring des risques et une traçabilité réglementaire ED-202A.**
+**Quality gate sécurité augmenté par l'IA pour systèmes numériques critiques : SkyGuard simule la surface d'attaque des systèmes numériques d'un avion commercial, puis rejoue à chaque commit un threat modeling STRIDE assisté, un scoring des risques et une traçabilité réglementaire ED-202A.**
 
 [![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
-[![Tests](https://img.shields.io/badge/tests-252%20passed%20%7C%206%20skipped-brightgreen?logo=pytest)]()
+[![Tests](https://img.shields.io/badge/tests-252%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
-[![Agents IA](https://img.shields.io/badge/agents%20IA-3%20×%20Claude-8B5CF6?logo=anthropic)](src/agents/)
-[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-> 🇬🇧 **English version: [README.en.md](README.en.md)**
-
----
+> 🇬🇧 [English version](README.en.md)
 
 ## Le problème de validation qualité
 
