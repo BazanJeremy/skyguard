@@ -33,10 +33,10 @@ jobs:
       security-events: write    # needed for SARIF upload
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_DEFAULT }}
           cache: pip
@@ -72,7 +72,7 @@ jobs:
           category: bandit
 
       - name: Upload Bandit SARIF artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bandit-sarif
           path: bandit-results.sarif
@@ -93,7 +93,7 @@ jobs:
       image: returntocorp/semgrep
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run Semgrep (python + security-audit ruleset)
         run: |
@@ -115,7 +115,7 @@ jobs:
           category: semgrep
 
       - name: Upload Semgrep SARIF artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: semgrep-sarif
           path: semgrep-results.sarif
@@ -132,7 +132,7 @@ jobs:
 
     steps:
       - name: Download SARIF artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: "*-sarif"
           path: sarif-results/
