@@ -50,7 +50,10 @@ jobs:
           cache: pip
 
       - name: Install quality tools
-        run: pip install ruff mypy flask anthropic
+        # Pin linters to the versions validated in local dev (.venv).
+        # Unpinned installs let CI drift to newer releases with different
+        # lint rules, breaking a green suite without any code change.
+        run: pip install ruff==0.15.19 mypy==2.1.0 flask anthropic
 
       - name: Ruff — lint
         run: ruff check src/ tests/
