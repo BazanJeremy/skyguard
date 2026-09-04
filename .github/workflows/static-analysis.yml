@@ -48,8 +48,8 @@ jobs:
         run: |
           bandit \
             --recursive src/ \
-            --severity-level HIGH \
-            --confidence-level MEDIUM \
+            --severity-level high \
+            --confidence-level medium \
             --format sarif \
             --output bandit-results.sarif \
             --exit-zero       # don't fail — we expect intentional weaknesses
@@ -61,7 +61,7 @@ jobs:
         run: |
           bandit \
             --recursive src/ \
-            --severity-level MEDIUM \
+            --severity-level medium \
             --format text \
             --exit-zero || true
 
