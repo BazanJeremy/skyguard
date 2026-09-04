@@ -1,6 +1,6 @@
 # SkyGuard — Static Security Analysis (Bandit + Semgrep)
 # =========================================================
-# Runs on every PR and on a daily schedule.
+# Runs on every PR and on manual dispatch.
 # Separate from the main pipeline — security scans are slow
 # and shouldn't block the fast test feedback loop.
 #
@@ -14,8 +14,6 @@ name: Static Security Analysis
 on:
   pull_request:
     branches: ["main", "develop"]
-  schedule:
-    - cron: "0 3 * * *"       # daily at 03:00 UTC
   workflow_dispatch:
 
 env:
@@ -50,8 +48,8 @@ jobs:
         run: |
           bandit \
             --recursive src/ \
-            --severity-level HIGH \
-            --confidence-level MEDIUM \
+            --severity-level high \
+            --confidence-level medium \
             --format sarif \
             --output bandit-results.sarif \
             --exit-zero       # don't fail — we expect intentional weaknesses
@@ -63,7 +61,7 @@ jobs:
         run: |
           bandit \
             --recursive src/ \
-            --severity-level MEDIUM \
+            --severity-level medium \
             --format text \
             --exit-zero || true
 
