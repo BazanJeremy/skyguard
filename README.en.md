@@ -63,7 +63,7 @@ model    = modeller.analyse(story)     # returns STRIDEModel with 6+ threats
 ### Agent 3 — Compliance Mapper
 
 **Input:** `list[SecurityFinding]`  
-**Output:** `ComplianceMatrix` — ED-202A SO-1…SO-6 mapping, DO-326A process gaps, gap severity ratings
+**Output:** `ComplianceMatrix` — mapping to SkyGuard's simplified SO-1…SO-6 objective scale (aligned on ED-202A, not the standard's numbering), DO-326A process gaps, gap severity ratings
 
 Gap ratings: `🔴 critical_gap` / `🟠 major_gap` / `🟡 minor_gap` / `🟢 compliant`
 
@@ -114,7 +114,7 @@ Parallel (PRs + daily):
 | AI agents making real QA decisions | `src/agents/` + `demo.py` output |
 | CVSS scoring, STRIDE, ED-202A | `reports/` (pre-generated) |
 | 2 real bugs caught by tests, before any manual review | Section below + commit history |
-| Honest architectural decisions | `docs/ADR-001` → `ADR-003` |
+| Honest architectural decisions | `docs/ADR-001` → `ADR-004` |
 | One-command environment | `docker compose up` |
 
 ## Simulated attack surface
@@ -144,7 +144,7 @@ Flask REST API simulating an Electronic Flight Bag — 13 routes across authenti
 
 **Five intentional, documented vulnerabilities:**
 
-| ID | Vulnerability | OWASP | CVSS v3.1 | ED-202A |
+| ID | Vulnerability | OWASP | CVSS v3.1 | Objective (SkyGuard scale) |
 |---|---|---|---|---|
 | W1 | No rate limiting on `/auth/token` | A07 | 7.5 HIGH | SO-3: enables brute-force pilot impersonation |
 | W2 | Hardcoded JWT secret exposed via `/debug` | A02 | **9.8 CRITICAL** | SO-3: token forgery → full system compromise |
@@ -200,7 +200,7 @@ The intentional weaknesses W2 (hardcoded secret) and W4 (debug endpoint) surface
 
 | Standard | Role in this project |
 |---|---|
-| **EASA ED-202A** | Airworthiness Security Process — SO-1…SO-6 objectives used for finding classification |
+| **EASA ED-202A** | Airworthiness Security Process — findings are classified on SkyGuard's own simplified SO-1…SO-6 scale, aligned on it (see [ADR-004](docs/ADR-004-skyguard-objective-scale.md)) |
 | **DO-326A** | Airworthiness Security Methods — Section references used in compliance matrix |
 | **ARINC 429** | Mark 33 DITS — public spec used for bus simulation frame structure |
 | **ARINC 618** | AGC protocol — basis for ACARS message format simulation |
@@ -275,6 +275,7 @@ docker compose up           # EFB API → :5050 · RabbitMQ UI → :15672
 | [ADR-001](docs/ADR-001-protocol-simulation.md) | Pure Python protocol simulation | Hardware-independent, CI-compatible, Hypothesis-testable |
 | [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude API + deterministic fallback | CI never blocked; live mode enhances without depending |
 | [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper is illustrative, not certifying | Honest scope framing signals domain awareness |
+| [ADR-004](docs/ADR-004-skyguard-objective-scale.md) | SkyGuard's own SO-1…SO-6 objective scale | One definition, and no numbering wrongly attributed to the standard |
 
 ## Test strategy
 
@@ -321,7 +322,8 @@ skyguard/
 ├── docs/
 │   ├── ADR-001-protocol-simulation.md   # why pure Python simulation
 │   ├── ADR-002-ai-agent-design.md       # why Claude API + deterministic fallback
-│   └── ADR-003-compliance-scope.md      # honest framing of ED-202A mapping
+│   ├── ADR-003-compliance-scope.md      # honest framing of ED-202A mapping
+│   └── ADR-004-skyguard-objective-scale.md  # SO-1…SO-6 is SkyGuard's own scale
 ├── src/
 │   ├── simulators/
 │   │   ├── arinc429_bus.py           # ARINC 429 encoder/decoder + 4 injectors

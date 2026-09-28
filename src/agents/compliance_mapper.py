@@ -15,13 +15,13 @@ IMPORTANT — scope disclaimer:
   This is documented in ADR-003.
 
 Agent responsibilities:
-  1. Map each finding to the relevant ED-202A security objective (SO-1..SO-6)
+  1. Map each finding to SkyGuard's objective scale (SO-1..SO-6, see objectives.py)
   2. Identify DO-326A process gaps (Section 5 — Security Risk Assessment)
   3. Assign a compliance gap severity (compliant / minor gap / major gap / critical gap)
   4. Produce a remediation priority list ordered by regulatory impact
   5. Generate a compliance matrix table ready for a review board
 
-Prompt version: v1.1.0
+Prompt version: v1.2.0
 Model: claude-sonnet-4-6
 """
 
@@ -35,6 +35,7 @@ from typing import Any
 
 import anthropic
 
+from src.agents.objectives import OBJECTIVE_SCALE_PROMPT, objective
 from src.agents.pentest_narrator import SecurityFinding
 
 
@@ -56,7 +57,7 @@ class ComplianceEntry:
 
     finding_id: str
     finding_title: str
-    ed202a_objective: str  # e.g. "SO-3: Maintain data integrity"
+    ed202a_objective: str  # e.g. "SO-3: Implement security controls"
     ed202a_section: str  # e.g. "Section 5.2 — Threat Identification"
     do326a_process: str  # e.g. "5.3 — Security Risk Assessment"
     gap: ComplianceGap
@@ -82,7 +83,7 @@ class ComplianceMatrix:
     minor_count: int = 0
     compliant_count: int = 0
     raw_response: str = ""
-    prompt_version: str = "v1.1.0"
+    prompt_version: str = "v1.2.0"
     model: str = "claude-sonnet-4-6"
 
     def __post_init__(self) -> None:
@@ -107,21 +108,15 @@ class ComplianceMatrix:
 SYSTEM_PROMPT_V1 = """\
 You are a senior aviation cybersecurity compliance specialist with expertise in:
 - EASA ED-202A: Airworthiness Security Process Specification
-- DO-326A: Airworthiness Security Methods and Considerations
+- DO-326A: Airworthiness Security Process Specification (RTCA counterpart of ED-202A)
 - FAA AC 119-1 (equivalent US standard)
 - Mapping software/API vulnerabilities to regulatory security objectives
 
 You receive security findings from an Electronic Flight Bag (EFB) REST API
-and map each one to the relevant ED-202A security objective and DO-326A process,
-assigning a compliance gap rating.
+and map each one to the relevant objective of the SkyGuard scale below and to a
+DO-326A process, assigning a compliance gap rating.
 
-ED-202A Security Objectives reference:
-  SO-1: Identify cybersecurity threats and hazards
-  SO-2: Define security requirements
-  SO-3: Implement security controls
-  SO-4: Verify security controls are effective
-  SO-5: Ensure security is maintained throughout the lifecycle
-  SO-6: Manage identified vulnerabilities
+{objective_scale}
 
 DO-326A process sections (simplified):
   Section 4 — Security planning
@@ -138,7 +133,7 @@ Return an object with this shape:
     {
       "finding_id": "<finding id>",
       "finding_title": "<title>",
-      "ed202a_objective": "<SO-N: objective name>",
+      "ed202a_objective": "<SO-N: objective name, from the SkyGuard scale>",
       "ed202a_section": "<specific ED-202A section reference>",
       "do326a_process": "<section N.N — process name>",
       "gap": "<compliant|minor_gap|major_gap|critical_gap>",
@@ -157,7 +152,7 @@ Rules:
 - corrective_action must be technically specific (e.g. "Add @limiter.limit('5/minute')
   decorator from Flask-Limiter"), not generic (e.g. "improve security").
 - verification_test must follow pytest naming convention.
-"""
+""".replace("{objective_scale}", OBJECTIVE_SCALE_PROMPT)
 
 _ENTRY_FIELDS = [
     "finding_id",
@@ -216,7 +211,7 @@ Generate the full compliance matrix JSON.
 
 _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
     "W1": {
-        "ed202a_objective": "SO-3: Implement security controls",
+        "ed202a_objective": objective("SO-3"),
         "ed202a_section": "Section 5.3 — Security risk assessment",
         "do326a_process": "7.2 — Authentication and access control implementation",
         "gap": ComplianceGap.MAJOR_GAP,
@@ -232,7 +227,7 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
         "verification_test": "test_rate_limit_returns_429_after_5_attempts",
     },
     "W2": {
-        "ed202a_objective": "SO-3: Implement security controls",
+        "ed202a_objective": objective("SO-3"),
         "ed202a_section": "Section 7.1 — Cryptographic controls",
         "do326a_process": "7.3 — Cryptographic key management",
         "gap": ComplianceGap.CRITICAL_GAP,
@@ -249,7 +244,7 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
         "verification_test": "test_jwt_secret_not_exposed_in_any_endpoint",
     },
     "W3": {
-        "ed202a_objective": "SO-3: Implement security controls",
+        "ed202a_objective": objective("SO-3"),
         "ed202a_section": "Section 6.2 — Security requirements for data integrity",
         "do326a_process": "7.2 — Authorisation and access control",
         "gap": ComplianceGap.MAJOR_GAP,
@@ -266,7 +261,7 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
         "verification_test": "test_pilot_cannot_access_other_pilots_plan",
     },
     "W4": {
-        "ed202a_objective": "SO-3: Implement security controls",
+        "ed202a_objective": objective("SO-3"),
         "ed202a_section": "Section 5.4 — Attack surface reduction",
         "do326a_process": "8.1 — Security verification of implemented controls",
         "gap": ComplianceGap.CRITICAL_GAP,
@@ -284,7 +279,7 @@ _FALLBACK_ENTRIES: dict[str, dict[str, Any]] = {
         "verification_test": "test_debug_endpoint_does_not_exist_in_production",
     },
     "W5": {
-        "ed202a_objective": "SO-6: Manage identified vulnerabilities",
+        "ed202a_objective": objective("SO-6"),
         "ed202a_section": "Section 5.5 — Information disclosure risk",
         "do326a_process": "9.1 — Vulnerability management",
         "gap": ComplianceGap.MINOR_GAP,
@@ -329,7 +324,7 @@ def _fallback_matrix(findings: list[SecurityFinding]) -> ComplianceMatrix:
                 ComplianceEntry(
                     finding_id=f.id,
                     finding_title=f.title,
-                    ed202a_objective="SO-6: Manage identified vulnerabilities",
+                    ed202a_objective=objective("SO-6"),
                     ed202a_section="Section 5.3 — Security risk assessment",
                     do326a_process="9.1 — Vulnerability management",
                     gap=ComplianceGap.MAJOR_GAP,
@@ -473,7 +468,7 @@ class ComplianceMapper:
             "",
             "## Compliance Matrix",
             "",
-            "| Finding | Title | ED-202A Objective | DO-326A Process | Gap |",
+            "| Finding | Title | SkyGuard Objective | DO-326A Process | Gap |",
             "|---|---|---|---|---|",
         ]
 
@@ -492,7 +487,7 @@ class ComplianceMapper:
             lines += [
                 f"### {e.finding_id} — {e.finding_title}",
                 "",
-                f"- **ED-202A Objective:** {e.ed202a_objective}",
+                f"- **SkyGuard Objective:** {e.ed202a_objective}",
                 f"- **ED-202A Section:** {e.ed202a_section}",
                 f"- **DO-326A Process:** {e.do326a_process}",
                 f"- **Gap:** {emoji} {e.gap.value.replace('_', ' ').title()}",

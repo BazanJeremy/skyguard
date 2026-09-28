@@ -14,9 +14,9 @@ This agent performs:
   2. STRIDE threat enumeration per actor/asset pair
   3. Attack tree generation for high-severity threats
   4. Mitigations mapped to concrete test cases
-  5. ED-202A objective cross-reference
+  5. Cross-reference to SkyGuard's objective scale (SO-1..SO-6, see objectives.py)
 
-Prompt version: v1.0.0
+Prompt version: v1.1.0
 Model: claude-sonnet-4-6
 """
 
@@ -29,6 +29,8 @@ from enum import Enum
 from typing import Any
 
 import anthropic
+
+from src.agents.objectives import OBJECTIVE_SCALE_PROMPT, objective
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +71,7 @@ class STRIDEThreat:
     actor: str  # who performs the attack
     likelihood: str  # low / medium / high
     impact: str  # low / medium / high
-    ed202a_ref: str  # ED-202A objective reference
+    ed202a_ref: str  # SkyGuard objective (see objectives.py), e.g. "SO-3: ..."
     mitigations: list[str]  # concrete defensive measures
     test_cases: list[str]  # suggested Pytest/Playwright test names
 
@@ -86,7 +88,7 @@ class STRIDEModel:
     attack_trees: list[dict[str, Any]]  # for high-severity threats
     summary: str
     raw_response: str
-    prompt_version: str = "v1.0.0"
+    prompt_version: str = "v1.1.0"
     model: str = "claude-sonnet-4-6"
 
 
@@ -99,14 +101,14 @@ You are a senior aviation cybersecurity architect specialised in threat modellin
 for airborne systems. You have deep knowledge of:
 - STRIDE threat modelling methodology
 - EASA ED-202A Airworthiness Security Process Specification
-- DO-326A Airworthiness Security Methods and Considerations
+- DO-326A Airworthiness Security Process Specification (RTCA counterpart of ED-202A)
 - Common avionics attack patterns (EFB, ACARS, ADS-B, ARINC 429)
 
 You receive a User Story in Gherkin format describing a feature of an
 Electronic Flight Bag (EFB) avionics system and produce a complete STRIDE
 threat model.
 
-Your output MUST be a single valid JSON object with this exact schema:
+Return an object with this shape:
 {
   "actors": ["<list of actors extracted from the story>"],
   "assets": ["<list of assets/data identified in the story>"],
@@ -121,7 +123,7 @@ Your output MUST be a single valid JSON object with this exact schema:
       "actor": "<who performs this attack>",
       "likelihood": "<low|medium|high>",
       "impact": "<low|medium|high>",
-      "ed202a_ref": "<relevant ED-202A objective, e.g. 'SO-1: Identify cybersecurity threats'>",
+      "ed202a_ref": "<objective from the SkyGuard scale, e.g. 'SO-3: Implement security controls'>",
       "mitigations": ["<specific, actionable mitigation 1>", "<mitigation 2>"],
       "test_cases": ["<suggested test name 1>", "<suggested test name 2>"]
     }
@@ -130,13 +132,11 @@ Your output MUST be a single valid JSON object with this exact schema:
     {
       "root_threat": "<T-id of the high/critical threat>",
       "goal": "<attacker goal>",
-      "tree": {
-        "node": "<root attack step>",
-        "children": [
-          {"node": "<step>", "children": []},
-          {"node": "<step>", "children": []}
-        ]
-      }
+      "nodes": [
+        {"id": "N1", "parent_id": "", "step": "<root attack step>"},
+        {"id": "N2", "parent_id": "N1", "step": "<step>"},
+        {"id": "N3", "parent_id": "N1", "step": "<step>"}
+      ]
     }
   ]
 }
@@ -144,10 +144,120 @@ Your output MUST be a single valid JSON object with this exact schema:
 Rules:
 - Produce at least one threat per STRIDE category (6 minimum).
 - Include an attack tree for every threat rated high likelihood AND high impact.
+- An attack tree lists its steps as nodes: exactly one root node with an empty
+  parent_id; every other node gives the id of its parent step.
 - Test case names must follow pytest naming convention (test_<verb>_<subject>).
-- ED-202A references must be specific (SO-1 through SO-6 or objective names from the spec).
-- Output ONLY the JSON. No markdown fences, no preamble.
-"""
+- ed202a_ref names one objective of the SkyGuard scale, as "SO-n: name":
+
+{objective_scale}
+""".replace("{objective_scale}", OBJECTIVE_SCALE_PROMPT)
+
+_STRIDE_CATEGORIES = [c.value for c in STRIDECategory]
+_LEVELS = ["low", "medium", "high"]
+
+RESPONSE_SCHEMA_V1 = {
+    "type": "object",
+    "properties": {
+        "actors": {"type": "array", "items": {"type": "string"}},
+        "assets": {"type": "array", "items": {"type": "string"}},
+        "summary": {"type": "string"},
+        "threats": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "category": {"type": "string", "enum": _STRIDE_CATEGORIES},
+                    "title": {"type": "string"},
+                    "description": {"type": "string"},
+                    "asset": {"type": "string"},
+                    "actor": {"type": "string"},
+                    "likelihood": {"type": "string", "enum": _LEVELS},
+                    "impact": {"type": "string", "enum": _LEVELS},
+                    "ed202a_ref": {"type": "string"},
+                    "mitigations": {"type": "array", "items": {"type": "string"}},
+                    "test_cases": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": [
+                    "id",
+                    "category",
+                    "title",
+                    "description",
+                    "asset",
+                    "actor",
+                    "likelihood",
+                    "impact",
+                    "ed202a_ref",
+                    "mitigations",
+                    "test_cases",
+                ],
+                "additionalProperties": False,
+            },
+        },
+        # Structured outputs reject recursive schemas: each tree arrives as a
+        # flat node list and is rebuilt into the nested shape by _build_tree.
+        "attack_trees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "root_threat": {"type": "string"},
+                    "goal": {"type": "string"},
+                    "nodes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "parent_id": {"type": "string"},
+                                "step": {"type": "string"},
+                            },
+                            "required": ["id", "parent_id", "step"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["root_threat", "goal", "nodes"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["actors", "assets", "summary", "threats", "attack_trees"],
+    "additionalProperties": False,
+}
+
+
+def _build_tree(nodes: list[dict[str, str]]) -> dict[str, Any]:
+    """Rebuild the nested {"node", "children"} tree from a flat node list.
+
+    The first node with an empty parent_id is the root. A node whose parent
+    is missing, or that sits on a parent cycle unreachable from the root, is
+    attached to the root, so no step the model produced is lost.
+    """
+    if not nodes:
+        return {"node": "", "children": []}
+    root = next((n for n in nodes if not n["parent_id"]), nodes[0])
+    ids = {n["id"] for n in nodes}
+    children: dict[str, list[dict[str, str]]] = {}
+    for n in nodes:
+        if n is root:
+            continue
+        parent = n["parent_id"] if n["parent_id"] in ids else root["id"]
+        children.setdefault(parent, []).append(n)
+
+    seen: set[str] = set()
+
+    def expand(n: dict[str, str]) -> dict[str, Any]:
+        seen.add(n["id"])
+        kids = [expand(c) for c in children.get(n["id"], []) if c["id"] not in seen]
+        return {"node": n["step"], "children": kids}
+
+    tree = expand(root)
+    for n in nodes:
+        if n["id"] not in seen:
+            tree["children"].append(expand(n))
+    return tree
+
 
 USER_PROMPT_TEMPLATE_V1 = """\
 Produce a STRIDE threat model for the following User Story from the SkyGuard EFB system.
@@ -184,7 +294,7 @@ _STRIDE_FALLBACK_THREATS = [
         "External attacker",
         "medium",
         "high",
-        "SO-2: Protect against identity spoofing",
+        objective("SO-3"),
         ["Implement MFA for pilot login", "Validate token signature on every request"],
         ["test_fake_token_rejected", "test_expired_token_rejected"],
     ),
@@ -197,7 +307,7 @@ _STRIDE_FALLBACK_THREATS = [
         "Malicious insider / compromised account",
         "high",
         "high",
-        "SO-3: Maintain data integrity",
+        objective("SO-3"),
         [
             "Add ownership check before any plan mutation",
             "Log all write operations with user ID",
@@ -213,7 +323,7 @@ _STRIDE_FALLBACK_THREATS = [
         "Any authenticated user",
         "medium",
         "medium",
-        "SO-4: Support non-repudiation",
+        objective("SO-3"),
         [
             "Implement structured request logging (user_id, endpoint, timestamp, response_code)",
             "Store logs in append-only storage",
@@ -229,7 +339,7 @@ _STRIDE_FALLBACK_THREATS = [
         "External attacker",
         "high",
         "critical",
-        "SO-5: Prevent information disclosure",
+        objective("SO-3"),
         [
             "Remove /debug endpoint from production",
             "Move sensitive config to environment vault",
@@ -245,7 +355,7 @@ _STRIDE_FALLBACK_THREATS = [
         "External attacker",
         "high",
         "high",
-        "SO-6: Maintain availability",
+        objective("SO-3"),
         [
             "Add rate limiting: max 5 attempts/minute per IP",
             "Implement progressive delay",
@@ -264,7 +374,7 @@ _STRIDE_FALLBACK_THREATS = [
         "Compromised user account",
         "low",
         "high",
-        "SO-2: Protect against privilege escalation",
+        objective("SO-3"),
         ["Embed role in signed token payload", "Invalidate tokens on role change"],
         [
             "test_role_change_invalidates_existing_token",
@@ -415,15 +525,17 @@ class ThreatModeller:
         assert self._client is not None, "_call_api requires a valid API key"
         message = self._client.messages.create(
             model=self._model,
-            max_tokens=2048,
+            max_tokens=16000,
             system=SYSTEM_PROMPT_V1,
             messages=[{"role": "user", "content": user_prompt}],
+            output_config={
+                "format": {"type": "json_schema", "schema": RESPONSE_SCHEMA_V1}
+            },
         )
+        if message.stop_reason != "end_turn":
+            raise RuntimeError(f"LLM stopped early (stop_reason={message.stop_reason})")
         text_block = next(b for b in message.content if b.type == "text")
         raw = text_block.text.strip()
-
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
         parsed = json.loads(raw)
 
@@ -451,7 +563,14 @@ class ThreatModeller:
             actors=parsed.get("actors", []),
             assets=parsed.get("assets", []),
             threats=threats,
-            attack_trees=parsed.get("attack_trees", []),
+            attack_trees=[
+                {
+                    "root_threat": t["root_threat"],
+                    "goal": t["goal"],
+                    "tree": _build_tree(t["nodes"]),
+                }
+                for t in parsed.get("attack_trees", [])
+            ],
             summary=parsed.get("summary", ""),
             raw_response=raw,
             model=self._model,
@@ -498,7 +617,7 @@ class ThreatModeller:
                     "",
                     f"**Asset:** {t.asset}  ",
                     f"**Actor:** {t.actor}  ",
-                    f"**ED-202A:** {t.ed202a_ref}",
+                    f"**Objective (SkyGuard scale):** {t.ed202a_ref}",
                     "",
                     t.description,
                     "",
