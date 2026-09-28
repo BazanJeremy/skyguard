@@ -21,7 +21,7 @@ Agent responsibilities:
   4. Produce a remediation priority list ordered by regulatory impact
   5. Generate a compliance matrix table ready for a review board
 
-Prompt version: v1.1.0
+Prompt version: v1.2.0
 Model: claude-sonnet-4-6
 """
 
@@ -82,7 +82,7 @@ class ComplianceMatrix:
     minor_count: int = 0
     compliant_count: int = 0
     raw_response: str = ""
-    prompt_version: str = "v1.1.0"
+    prompt_version: str = "v1.2.0"
     model: str = "claude-sonnet-4-6"
 
     def __post_init__(self) -> None:
@@ -107,7 +107,7 @@ class ComplianceMatrix:
 SYSTEM_PROMPT_V1 = """\
 You are a senior aviation cybersecurity compliance specialist with expertise in:
 - EASA ED-202A: Airworthiness Security Process Specification
-- DO-326A: Airworthiness Security Methods and Considerations
+- DO-326A: Airworthiness Security Process Specification (RTCA counterpart of ED-202A)
 - FAA AC 119-1 (equivalent US standard)
 - Mapping software/API vulnerabilities to regulatory security objectives
 

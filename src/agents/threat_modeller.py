@@ -16,7 +16,7 @@ This agent performs:
   4. Mitigations mapped to concrete test cases
   5. ED-202A objective cross-reference
 
-Prompt version: v1.0.0
+Prompt version: v1.1.0
 Model: claude-sonnet-4-6
 """
 
@@ -86,7 +86,7 @@ class STRIDEModel:
     attack_trees: list[dict[str, Any]]  # for high-severity threats
     summary: str
     raw_response: str
-    prompt_version: str = "v1.0.0"
+    prompt_version: str = "v1.1.0"
     model: str = "claude-sonnet-4-6"
 
 
@@ -99,14 +99,14 @@ You are a senior aviation cybersecurity architect specialised in threat modellin
 for airborne systems. You have deep knowledge of:
 - STRIDE threat modelling methodology
 - EASA ED-202A Airworthiness Security Process Specification
-- DO-326A Airworthiness Security Methods and Considerations
+- DO-326A Airworthiness Security Process Specification (RTCA counterpart of ED-202A)
 - Common avionics attack patterns (EFB, ACARS, ADS-B, ARINC 429)
 
 You receive a User Story in Gherkin format describing a feature of an
 Electronic Flight Bag (EFB) avionics system and produce a complete STRIDE
 threat model.
 
-Your output MUST be a single valid JSON object with this exact schema:
+Return an object with this shape:
 {
   "actors": ["<list of actors extracted from the story>"],
   "assets": ["<list of assets/data identified in the story>"],
@@ -130,13 +130,11 @@ Your output MUST be a single valid JSON object with this exact schema:
     {
       "root_threat": "<T-id of the high/critical threat>",
       "goal": "<attacker goal>",
-      "tree": {
-        "node": "<root attack step>",
-        "children": [
-          {"node": "<step>", "children": []},
-          {"node": "<step>", "children": []}
-        ]
-      }
+      "nodes": [
+        {"id": "N1", "parent_id": "", "step": "<root attack step>"},
+        {"id": "N2", "parent_id": "N1", "step": "<step>"},
+        {"id": "N3", "parent_id": "N1", "step": "<step>"}
+      ]
     }
   ]
 }
@@ -144,10 +142,118 @@ Your output MUST be a single valid JSON object with this exact schema:
 Rules:
 - Produce at least one threat per STRIDE category (6 minimum).
 - Include an attack tree for every threat rated high likelihood AND high impact.
+- An attack tree lists its steps as nodes: exactly one root node with an empty
+  parent_id; every other node gives the id of its parent step.
 - Test case names must follow pytest naming convention (test_<verb>_<subject>).
 - ED-202A references must be specific (SO-1 through SO-6 or objective names from the spec).
-- Output ONLY the JSON. No markdown fences, no preamble.
 """
+
+_STRIDE_CATEGORIES = [c.value for c in STRIDECategory]
+_LEVELS = ["low", "medium", "high"]
+
+RESPONSE_SCHEMA_V1 = {
+    "type": "object",
+    "properties": {
+        "actors": {"type": "array", "items": {"type": "string"}},
+        "assets": {"type": "array", "items": {"type": "string"}},
+        "summary": {"type": "string"},
+        "threats": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "category": {"type": "string", "enum": _STRIDE_CATEGORIES},
+                    "title": {"type": "string"},
+                    "description": {"type": "string"},
+                    "asset": {"type": "string"},
+                    "actor": {"type": "string"},
+                    "likelihood": {"type": "string", "enum": _LEVELS},
+                    "impact": {"type": "string", "enum": _LEVELS},
+                    "ed202a_ref": {"type": "string"},
+                    "mitigations": {"type": "array", "items": {"type": "string"}},
+                    "test_cases": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": [
+                    "id",
+                    "category",
+                    "title",
+                    "description",
+                    "asset",
+                    "actor",
+                    "likelihood",
+                    "impact",
+                    "ed202a_ref",
+                    "mitigations",
+                    "test_cases",
+                ],
+                "additionalProperties": False,
+            },
+        },
+        # Structured outputs reject recursive schemas: each tree arrives as a
+        # flat node list and is rebuilt into the nested shape by _build_tree.
+        "attack_trees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "root_threat": {"type": "string"},
+                    "goal": {"type": "string"},
+                    "nodes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "parent_id": {"type": "string"},
+                                "step": {"type": "string"},
+                            },
+                            "required": ["id", "parent_id", "step"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["root_threat", "goal", "nodes"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["actors", "assets", "summary", "threats", "attack_trees"],
+    "additionalProperties": False,
+}
+
+
+def _build_tree(nodes: list[dict[str, str]]) -> dict[str, Any]:
+    """Rebuild the nested {"node", "children"} tree from a flat node list.
+
+    The first node with an empty parent_id is the root. A node whose parent
+    is missing, or that sits on a parent cycle unreachable from the root, is
+    attached to the root, so no step the model produced is lost.
+    """
+    if not nodes:
+        return {"node": "", "children": []}
+    root = next((n for n in nodes if not n["parent_id"]), nodes[0])
+    ids = {n["id"] for n in nodes}
+    children: dict[str, list[dict[str, str]]] = {}
+    for n in nodes:
+        if n is root:
+            continue
+        parent = n["parent_id"] if n["parent_id"] in ids else root["id"]
+        children.setdefault(parent, []).append(n)
+
+    seen: set[str] = set()
+
+    def expand(n: dict[str, str]) -> dict[str, Any]:
+        seen.add(n["id"])
+        kids = [expand(c) for c in children.get(n["id"], []) if c["id"] not in seen]
+        return {"node": n["step"], "children": kids}
+
+    tree = expand(root)
+    for n in nodes:
+        if n["id"] not in seen:
+            tree["children"].append(expand(n))
+    return tree
+
 
 USER_PROMPT_TEMPLATE_V1 = """\
 Produce a STRIDE threat model for the following User Story from the SkyGuard EFB system.
@@ -415,15 +521,17 @@ class ThreatModeller:
         assert self._client is not None, "_call_api requires a valid API key"
         message = self._client.messages.create(
             model=self._model,
-            max_tokens=2048,
+            max_tokens=16000,
             system=SYSTEM_PROMPT_V1,
             messages=[{"role": "user", "content": user_prompt}],
+            output_config={
+                "format": {"type": "json_schema", "schema": RESPONSE_SCHEMA_V1}
+            },
         )
+        if message.stop_reason != "end_turn":
+            raise RuntimeError(f"LLM stopped early (stop_reason={message.stop_reason})")
         text_block = next(b for b in message.content if b.type == "text")
         raw = text_block.text.strip()
-
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
         parsed = json.loads(raw)
 
@@ -451,7 +559,14 @@ class ThreatModeller:
             actors=parsed.get("actors", []),
             assets=parsed.get("assets", []),
             threats=threats,
-            attack_trees=parsed.get("attack_trees", []),
+            attack_trees=[
+                {
+                    "root_threat": t["root_threat"],
+                    "goal": t["goal"],
+                    "tree": _build_tree(t["nodes"]),
+                }
+                for t in parsed.get("attack_trees", [])
+            ],
             summary=parsed.get("summary", ""),
             raw_response=raw,
             model=self._model,
