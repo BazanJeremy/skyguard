@@ -21,7 +21,7 @@ Agent responsibilities:
   4. Produce a remediation priority list ordered by regulatory impact
   5. Generate a compliance matrix table ready for a review board
 
-Prompt version: v1.0.0
+Prompt version: v1.1.0
 Model: claude-sonnet-4-6
 """
 
@@ -82,7 +82,7 @@ class ComplianceMatrix:
     minor_count: int = 0
     compliant_count: int = 0
     raw_response: str = ""
-    prompt_version: str = "v1.0.0"
+    prompt_version: str = "v1.1.0"
     model: str = "claude-sonnet-4-6"
 
     def __post_init__(self) -> None:
@@ -131,7 +131,7 @@ DO-326A process sections (simplified):
   Section 8 — Security verification
   Section 9 — Security process assurance
 
-Your output MUST be a single valid JSON object with this exact schema:
+Return an object with this shape:
 {
   "overall_posture": "<2-3 sentences: overall compliance posture assessment>",
   "entries": [
@@ -157,8 +157,43 @@ Rules:
 - corrective_action must be technically specific (e.g. "Add @limiter.limit('5/minute')
   decorator from Flask-Limiter"), not generic (e.g. "improve security").
 - verification_test must follow pytest naming convention.
-- Output ONLY the JSON. No markdown fences, no preamble.
 """
+
+_ENTRY_FIELDS = [
+    "finding_id",
+    "finding_title",
+    "ed202a_objective",
+    "ed202a_section",
+    "do326a_process",
+    "gap",
+    "gap_rationale",
+    "corrective_action",
+    "verification_test",
+]
+
+RESPONSE_SCHEMA_V1 = {
+    "type": "object",
+    "properties": {
+        "overall_posture": {"type": "string"},
+        "entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    **{name: {"type": "string"} for name in _ENTRY_FIELDS},
+                    "gap": {
+                        "type": "string",
+                        "enum": ["compliant", "minor_gap", "major_gap", "critical_gap"],
+                    },
+                },
+                "required": _ENTRY_FIELDS,
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["overall_posture", "entries"],
+    "additionalProperties": False,
+}
 
 USER_PROMPT_TEMPLATE_V1 = """\
 Map the following security findings from SkyGuard EFB API testing to
@@ -363,14 +398,17 @@ class ComplianceMapper:
         assert self._client is not None, "_call_api requires a valid API key"
         message = self._client.messages.create(
             model=self._model,
-            max_tokens=2048,
+            max_tokens=16000,
             system=SYSTEM_PROMPT_V1,
             messages=[{"role": "user", "content": user_prompt}],
+            output_config={
+                "format": {"type": "json_schema", "schema": RESPONSE_SCHEMA_V1}
+            },
         )
+        if message.stop_reason != "end_turn":
+            raise RuntimeError(f"LLM stopped early (stop_reason={message.stop_reason})")
         text_block = next(b for b in message.content if b.type == "text")
         raw = text_block.text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
         parsed = json.loads(raw)
 
