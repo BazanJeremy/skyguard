@@ -21,7 +21,7 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
 
 - **Pentest Narrator** — `list[SecurityFinding]` → scores CVSS v3.1 (avec vecteurs), chaînes d'attaque multi-étapes, plan de remédiation priorisé, mapping ED-202A.
 - **Threat Modeller** — une *User Story* au format Gherkin → modèle STRIDE (les 6 catégories), arbres d'attaque, noms de tests suggérés en convention pytest.
-- **Compliance Mapper** — `list[SecurityFinding]` → matrice ED-202A (SO-1…SO-6) / DO-326A, notation des écarts (🔴 critique → 🟢 conforme), actions correctives.
+- **Compliance Mapper** — `list[SecurityFinding]` → matrice sur l'échelle d'objectifs SO-1…SO-6 propre à SkyGuard (simplifiée, alignée sur ED-202A) / DO-326A, notation des écarts (🔴 critique → 🟢 conforme), actions correctives.
 
 ## Architecture
 
@@ -58,7 +58,7 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
 | Des agents IA qui prennent de vraies décisions QA | `src/agents/` + sortie de `demo.py` |
 | Scoring CVSS, STRIDE, ED-202A | `reports/` (pré-générés) |
 | 2 bugs réels attrapés par les tests, avant toute revue manuelle | [version anglaise](README.en.md) + historique de commits |
-| Décisions d'architecture honnêtes | `docs/ADR-001` → `ADR-003` |
+| Décisions d'architecture honnêtes | `docs/ADR-001` → `ADR-004` |
 | Environnement en une commande | `docker compose up` |
 
 ## Un scénario concret, de bout en bout
@@ -67,7 +67,7 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
 
 1. **Test** — `test_pilot_cannot_access_other_pilots_plan` envoie `GET /api/v1/flightplans/fp002` avec le jeton du commandant Dubois (propriétaire de `fp001` seulement). L'API répond `200 OK` : accès indirect non contrôlé confirmé (faiblesse **W3 — IDOR**).
 2. **Pentest Narrator** — score **CVSS 8.1 (élevé)** et identifie une chaîne d'attaque : *endpoint `/debug` non authentifié (W4) → énumération des jetons actifs → IDOR (W3) → lecture de n'importe quel plan de vol*.
-3. **Compliance Mapper** — mappe sur **ED-202A SO-3** (« Implement security controls »), écart **majeur**, action corrective précise : contrôle de propriété `plan.owner_id == current_user.id` sur les routes GET / PUT / DELETE.
+3. **Compliance Mapper** — mappe sur **SO-3** (« Implement security controls ») de l'échelle SkyGuard, écart **majeur**, action corrective précise : contrôle de propriété `plan.owner_id == current_user.id` sur les routes GET / PUT / DELETE.
 
 **Livrables produits** dans `reports/` : `pentest-report.md`, `stride-threat-model.md`, `compliance-matrix.md`.
 Le correctif se démontre en une variable d'environnement : `FLASK_ENV=production` fait disparaître l'endpoint `/debug` (W4).
@@ -82,7 +82,7 @@ Le correctif se démontre en une variable d'environnement : `FLASK_ENV=productio
 
 **Les 5 faiblesses de l'API EFB :**
 
-| ID | Faiblesse | OWASP | CVSS v3.1 | Enjeu ED-202A |
+| ID | Faiblesse | OWASP | CVSS v3.1 | Objectif (échelle SkyGuard) |
 |---|---|---|---|---|
 | W1 | Pas de rate-limit sur `/auth/token` | A07 | 7.5 | SO-3 : brute-force d'identité pilote |
 | W2 | Secret JWT en dur, exposé via `/debug` | A02 | **9.8** | SO-3 : forge de jetons |
@@ -150,6 +150,7 @@ docker compose up            # API EFB → http://localhost:5050
 | [ADR-001](docs/ADR-001-protocol-simulation.md) | Simulation protocolaire en Python pur | Indépendant du matériel, compatible CI, testable par Hypothesis |
 | [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude + fallback déterministe | La CI n'est jamais bloquée par une clé manquante |
 | [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper illustratif, pas certifiant | Cadrage honnête = signal de maturité sur le domaine régulé |
+| [ADR-004](docs/ADR-004-skyguard-objective-scale.md) | Échelle d'objectifs SO-1…SO-6 propre à SkyGuard | Une seule définition, et aucune numérotation attribuée à tort à la norme |
 
 ## Limites connues
 

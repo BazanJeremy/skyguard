@@ -14,7 +14,7 @@ This agent performs:
   2. STRIDE threat enumeration per actor/asset pair
   3. Attack tree generation for high-severity threats
   4. Mitigations mapped to concrete test cases
-  5. ED-202A objective cross-reference
+  5. Cross-reference to SkyGuard's objective scale (SO-1..SO-6, see objectives.py)
 
 Prompt version: v1.1.0
 Model: claude-sonnet-4-6
@@ -29,6 +29,8 @@ from enum import Enum
 from typing import Any
 
 import anthropic
+
+from src.agents.objectives import OBJECTIVE_SCALE_PROMPT, objective
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +71,7 @@ class STRIDEThreat:
     actor: str  # who performs the attack
     likelihood: str  # low / medium / high
     impact: str  # low / medium / high
-    ed202a_ref: str  # ED-202A objective reference
+    ed202a_ref: str  # SkyGuard objective (see objectives.py), e.g. "SO-3: ..."
     mitigations: list[str]  # concrete defensive measures
     test_cases: list[str]  # suggested Pytest/Playwright test names
 
@@ -121,7 +123,7 @@ Return an object with this shape:
       "actor": "<who performs this attack>",
       "likelihood": "<low|medium|high>",
       "impact": "<low|medium|high>",
-      "ed202a_ref": "<relevant ED-202A objective, e.g. 'SO-1: Identify cybersecurity threats'>",
+      "ed202a_ref": "<objective from the SkyGuard scale, e.g. 'SO-3: Implement security controls'>",
       "mitigations": ["<specific, actionable mitigation 1>", "<mitigation 2>"],
       "test_cases": ["<suggested test name 1>", "<suggested test name 2>"]
     }
@@ -145,8 +147,10 @@ Rules:
 - An attack tree lists its steps as nodes: exactly one root node with an empty
   parent_id; every other node gives the id of its parent step.
 - Test case names must follow pytest naming convention (test_<verb>_<subject>).
-- ED-202A references must be specific (SO-1 through SO-6 or objective names from the spec).
-"""
+- ed202a_ref names one objective of the SkyGuard scale, as "SO-n: name":
+
+{objective_scale}
+""".replace("{objective_scale}", OBJECTIVE_SCALE_PROMPT)
 
 _STRIDE_CATEGORIES = [c.value for c in STRIDECategory]
 _LEVELS = ["low", "medium", "high"]
@@ -290,7 +294,7 @@ _STRIDE_FALLBACK_THREATS = [
         "External attacker",
         "medium",
         "high",
-        "SO-2: Protect against identity spoofing",
+        objective("SO-3"),
         ["Implement MFA for pilot login", "Validate token signature on every request"],
         ["test_fake_token_rejected", "test_expired_token_rejected"],
     ),
@@ -303,7 +307,7 @@ _STRIDE_FALLBACK_THREATS = [
         "Malicious insider / compromised account",
         "high",
         "high",
-        "SO-3: Maintain data integrity",
+        objective("SO-3"),
         [
             "Add ownership check before any plan mutation",
             "Log all write operations with user ID",
@@ -319,7 +323,7 @@ _STRIDE_FALLBACK_THREATS = [
         "Any authenticated user",
         "medium",
         "medium",
-        "SO-4: Support non-repudiation",
+        objective("SO-3"),
         [
             "Implement structured request logging (user_id, endpoint, timestamp, response_code)",
             "Store logs in append-only storage",
@@ -335,7 +339,7 @@ _STRIDE_FALLBACK_THREATS = [
         "External attacker",
         "high",
         "critical",
-        "SO-5: Prevent information disclosure",
+        objective("SO-3"),
         [
             "Remove /debug endpoint from production",
             "Move sensitive config to environment vault",
@@ -351,7 +355,7 @@ _STRIDE_FALLBACK_THREATS = [
         "External attacker",
         "high",
         "high",
-        "SO-6: Maintain availability",
+        objective("SO-3"),
         [
             "Add rate limiting: max 5 attempts/minute per IP",
             "Implement progressive delay",
@@ -370,7 +374,7 @@ _STRIDE_FALLBACK_THREATS = [
         "Compromised user account",
         "low",
         "high",
-        "SO-2: Protect against privilege escalation",
+        objective("SO-3"),
         ["Embed role in signed token payload", "Invalidate tokens on role change"],
         [
             "test_role_change_invalidates_existing_token",
@@ -613,7 +617,7 @@ class ThreatModeller:
                     "",
                     f"**Asset:** {t.asset}  ",
                     f"**Actor:** {t.actor}  ",
-                    f"**ED-202A:** {t.ed202a_ref}",
+                    f"**Objective (SkyGuard scale):** {t.ed202a_ref}",
                     "",
                     t.description,
                     "",
