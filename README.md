@@ -173,6 +173,7 @@ Ces outils partagent les mêmes principes : **le déterministe d'abord, l'IA là
 | [Anomaly Sentinel](https://github.com/BazanJeremy/anomaly-sentinel) | Tester les IA de détection d'anomalies (medtech · fintech) |
 | [TestScribe](https://github.com/BazanJeremy/testscribe) | Enrichissement de bug reports assisté par IA |
 | [SkyGuard](https://github.com/BazanJeremy/skyguard) **← ce repo** | Quality gate sécurité pour systèmes critiques avioniques |
+| [loadlens](https://github.com/BazanJeremy/loadlens) | Verdict de performance argumenté sur des tests de charge |
 
 ## Auteur
 
