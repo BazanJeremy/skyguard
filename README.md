@@ -3,7 +3,7 @@
 **Quality gate sécurité augmenté par l'IA pour systèmes numériques critiques : SkyGuard simule la surface d'attaque des systèmes numériques d'un avion commercial, puis rejoue à chaque commit un threat modeling STRIDE assisté, un scoring des risques et une traçabilité réglementaire ED-202A.**
 
 [![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
-[![Tests](https://img.shields.io/badge/tests-252%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-266%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -54,11 +54,11 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
 
 | Signal | Où |
 |---|---|
-| 252 tests, pipeline CI à 7 jobs | Badge + onglet Actions |
+| 266 tests, pipeline CI à 7 jobs | Badge + onglet Actions |
 | Des agents IA qui prennent de vraies décisions QA | `src/agents/` + sortie de `demo.py` |
 | Scoring CVSS, STRIDE, ED-202A | `reports/` (pré-générés) |
 | 2 bugs réels attrapés par les tests, avant toute revue manuelle | [version anglaise](README.en.md) + historique de commits |
-| Décisions d'architecture honnêtes | `docs/ADR-001` → `ADR-004` |
+| Décisions d'architecture honnêtes | `docs/ADR-001` → `ADR-005` |
 | Environnement en une commande | `docker compose up` |
 
 ## Un scénario concret, de bout en bout
@@ -90,14 +90,14 @@ Le correctif se démontre en une variable d'environnement : `FLASK_ENV=productio
 | W4 | Endpoint `/debug` non authentifié | A05 | **9.1** | SO-3 : jetons + secret exposés |
 | W5 | Traces d'exécution dans les réponses | A09 | 5.3 | SO-6 : facilite l'exploitation |
 
-**Couverture des tests** — 252 passés, 6 ignorés (~8 s, sans clé API) :
+**Couverture des tests** — 266 passés, 6 ignorés (~10 s, sans clé API) :
 
 | Couche | Tests |
 |---|---|
 | Protocole (ARINC 429 + ACARS) | 82 |
 | Fuzzing (Hypothesis, 50 000+ cas par run) | 27 |
-| Sécurité (API EFB, W1–W5) | 71 |
-| Agents IA (contrats, fallback, rendu) | 72 |
+| Sécurité (API EFB, W1–W5, gate des findings) | 83 |
+| Agents IA (contrats, fallback, rendu) | 74 |
 
 ## Stack technique
 
@@ -123,7 +123,7 @@ pip install -r requirements.txt
 # Pipeline IA complet — mode fallback, aucune clé requise
 python demo.py --save
 
-# Suite complète — 252 tests, ~8 s
+# Suite complète — 266 tests, ~10 s
 python -m pytest
 ```
 
@@ -151,6 +151,7 @@ docker compose up            # API EFB → http://localhost:5050
 | [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude + fallback déterministe | La CI n'est jamais bloquée par une clé manquante |
 | [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper illustratif, pas certifiant | Cadrage honnête = signal de maturité sur le domaine régulé |
 | [ADR-004](docs/ADR-004-skyguard-objective-scale.md) | Échelle d'objectifs SO-1…SO-6 propre à SkyGuard | Une seule définition, et aucune numérotation attribuée à tort à la norme |
+| [ADR-005](docs/ADR-005-findings-derived-from-tests.md) | Findings de la CI dérivés des résultats des tests de sécurité | Le gate dépend d'une preuve et peut échouer — il comparait une constante à elle-même |
 
 ## Limites connues
 

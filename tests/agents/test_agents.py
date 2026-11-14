@@ -9,7 +9,8 @@ Verifies:
   4. Markdown rendering — output can be written to a file without error
 
 These tests run in CI without any API credentials.
-Live API tests are tagged @pytest.mark.live and skipped unless ANTHROPIC_API_KEY is set.
+Live API tests are skipped unless ANTHROPIC_API_KEY is set AND RUN_LIVE_API_TESTS=1:
+the key alone never triggers a billed call (see the root conftest.py).
 
 Run: pytest tests/agents/ -v --tb=short
 """
@@ -611,12 +612,43 @@ class TestAgentPipelineIntegration:
 
 
 # ---------------------------------------------------------------------------
-# Live API tests — skipped unless ANTHROPIC_API_KEY is set
+# Live opt-in — the suite never spends money by accident
+# ---------------------------------------------------------------------------
+
+
+class TestLiveOptIn:
+    def test_api_key_is_removed_unless_live_runs_are_asked_for(self):
+        from conftest import LIVE_OPT_IN, strip_api_key
+
+        environ = {"ANTHROPIC_API_KEY": "sk-not-a-real-key", "PATH": "x"}
+        assert strip_api_key(environ) is True
+        assert environ == {"PATH": "x"}
+
+        opted_in = {"ANTHROPIC_API_KEY": "sk-not-a-real-key", LIVE_OPT_IN: "1"}
+        assert strip_api_key(opted_in) is False
+        assert opted_in["ANTHROPIC_API_KEY"] == "sk-not-a-real-key"
+
+        assert strip_api_key({"PATH": "x"}) is False  # nothing to remove
+
+    def test_agents_built_by_the_suite_have_no_key(self):
+        from conftest import LIVE_OPT_IN
+
+        if os.environ.get(LIVE_OPT_IN) == "1":
+            pytest.skip("live run requested")
+
+        assert "ANTHROPIC_API_KEY" not in os.environ
+        assert not PentestNarrator().has_api_key
+        assert not ThreatModeller().has_api_key
+        assert not ComplianceMapper().has_api_key
+
+
+# ---------------------------------------------------------------------------
+# Live API tests — skipped unless ANTHROPIC_API_KEY is set and RUN_LIVE_API_TESTS=1
 # ---------------------------------------------------------------------------
 
 live = pytest.mark.skipif(
     not os.environ.get("ANTHROPIC_API_KEY"),
-    reason="ANTHROPIC_API_KEY not set — skipping live API tests",
+    reason="live API tests need ANTHROPIC_API_KEY and RUN_LIVE_API_TESTS=1",
 )
 
 

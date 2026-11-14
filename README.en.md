@@ -3,7 +3,7 @@
 **AI-augmented security quality gate for critical digital systems: SkyGuard simulates the digital attack surface of a commercial aircraft and deploys three autonomous AI agents to detect threats, model risks with STRIDE, and map findings to EASA ED-202A — fully automated on every commit.**
 
 [![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
-[![Tests](https://img.shields.io/badge/tests-252%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-266%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -23,7 +23,7 @@ The AI doesn't generate test boilerplate. It **reasons about security**: assigns
 
 All three agents share the same interface contract:
 - **With `ANTHROPIC_API_KEY`:** calls `claude-sonnet-4-6`, returns AI-reasoned output
-- **Without key:** returns deterministic fallback — all 252 tests pass, CI never blocked
+- **Without key:** returns deterministic fallback — all 266 tests pass, CI never blocked
 
 ### Agent 1 — Pentest Narrator
 
@@ -110,11 +110,11 @@ Parallel (PRs + daily):
 
 | Signal | Where |
 |---|---|
-| 252 tests, 7-job CI pipeline | Badge + Actions tab |
+| 266 tests, 7-job CI pipeline | Badge + Actions tab |
 | AI agents making real QA decisions | `src/agents/` + `demo.py` output |
 | CVSS scoring, STRIDE, ED-202A | `reports/` (pre-generated) |
 | 2 real bugs caught by tests, before any manual review | Section below + commit history |
-| Honest architectural decisions | `docs/ADR-001` → `ADR-004` |
+| Honest architectural decisions | `docs/ADR-001` → `ADR-005` |
 | One-command environment | `docker compose up` |
 
 ## Simulated attack surface
@@ -235,7 +235,7 @@ pip install -r requirements.txt
 # Full AI pipeline — fallback mode (no API key needed)
 python demo.py --save
 
-# Full test suite — 252 tests, ~8 seconds
+# Full test suite — 266 tests, ~10 seconds
 pytest tests/ -v
 ```
 
@@ -276,20 +276,21 @@ docker compose up           # EFB API → :5050 · RabbitMQ UI → :15672
 | [ADR-002](docs/ADR-002-ai-agent-design.md) | Claude API + deterministic fallback | CI never blocked; live mode enhances without depending |
 | [ADR-003](docs/ADR-003-compliance-scope.md) | Compliance mapper is illustrative, not certifying | Honest scope framing signals domain awareness |
 | [ADR-004](docs/ADR-004-skyguard-objective-scale.md) | SkyGuard's own SO-1…SO-6 objective scale | One definition, and no numbering wrongly attributed to the standard |
+| [ADR-005](docs/ADR-005-findings-derived-from-tests.md) | CI findings derived from the security test results | The gate depends on evidence and can fail — it used to compare a constant with itself |
 
 ## Test strategy
 
 ```
-252 passed, 6 skipped   (~8 seconds · no API key needed)
+266 passed, 6 skipped   (~10 seconds · no API key needed)
 ```
 
 | Layer | File(s) | Tests | What's covered |
 |---|---|---|---|
 | Protocol | `tests/protocol/` | 82 | ARINC 429 encode/decode, BNR, parity, 4 injectors; ACARS parser, 6 attack builders |
 | Fuzzing | `tests/fuzzing/` | 27 | Hypothesis: parser never crashes, return type invariant, idempotence, batch consistency |
-| Security | `tests/security/test_efb_api.py` | 71 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration |
-| Agents | `tests/agents/test_agents.py` | 72 | Output contracts, fallback behaviour, edge cases, Markdown rendering, pipeline integration |
-| Live (skipped) | `tests/agents/test_agents.py` | 6 | Claude API call validation — activated with `ANTHROPIC_API_KEY` |
+| Security | `tests/security/` | 83 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration — and the findings gate that derives the CI findings from those results |
+| Agents | `tests/agents/test_agents.py` | 74 | Output contracts, fallback behaviour, edge cases, Markdown rendering, pipeline integration |
+| Live (skipped) | `tests/agents/test_agents.py` | 6 | Claude API call validation — activated with `ANTHROPIC_API_KEY` **and** `RUN_LIVE_API_TESTS=1`; the key alone is ignored by the suite |
 
 Run a specific layer:
 ```bash
@@ -297,7 +298,7 @@ pytest tests/protocol/ -v -m protocol        # ARINC 429 + ACARS
 pytest tests/fuzzing/  -v -m fuzzing         # Hypothesis (generates 50k+ cases)
 pytest tests/security/ -v -m security        # EFB attack surface
 pytest tests/agents/   -v -m agents          # AI agents (fallback mode)
-pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_API_KEY)
+pytest tests/          -v -m live            # Live API tests (needs ANTHROPIC_API_KEY and RUN_LIVE_API_TESTS=1)
 ```
 
 ## Known limitations
@@ -323,7 +324,8 @@ skyguard/
 │   ├── ADR-001-protocol-simulation.md   # why pure Python simulation
 │   ├── ADR-002-ai-agent-design.md       # why Claude API + deterministic fallback
 │   ├── ADR-003-compliance-scope.md      # honest framing of ED-202A mapping
-│   └── ADR-004-skyguard-objective-scale.md  # SO-1…SO-6 is SkyGuard's own scale
+│   ├── ADR-004-skyguard-objective-scale.md  # SO-1…SO-6 is SkyGuard's own scale
+│   └── ADR-005-findings-derived-from-tests.md  # the CI gate reads the test results
 ├── src/
 │   ├── simulators/
 │   │   ├── arinc429_bus.py           # ARINC 429 encoder/decoder + 4 injectors
@@ -336,8 +338,8 @@ skyguard/
 ├── tests/
 │   ├── protocol/                     # 82 tests — ARINC 429 + ACARS
 │   ├── fuzzing/                      # 27 tests — Hypothesis property-based
-│   ├── security/                     # 71 tests — EFB attack surface
-│   └── agents/                       # 72 tests — AI agent contracts
+│   ├── security/                     # 83 tests — EFB attack surface + findings gate
+│   └── agents/                       # 74 tests — AI agent contracts
 ├── reports/                          # pre-generated AI reports (checked in)
 │   ├── pentest-report.md
 │   ├── stride-threat-model.md

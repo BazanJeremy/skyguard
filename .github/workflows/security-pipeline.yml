@@ -146,6 +146,7 @@ jobs:
             -v \
             --tb=short \
             --alluredir=allure-results \
+            --junitxml=security-junit.xml \
             -m "security"
 
       - name: Upload Allure results
@@ -156,22 +157,13 @@ jobs:
           path: allure-results/
           retention-days: 7
 
-      # Export a simple findings JSON for the ai-analysis job
-      - name: Export findings summary
+      # Findings for the ai-analysis job, derived from what the tests above
+      # actually showed (src/gate/findings.py). This step is a gate: it fails
+      # when a documented weakness has no passing test behind it, or when a
+      # TestW<n> class exists that the baseline does not document.
+      - name: Derive findings from the test results (gate)
         if: always()
-        run: |
-          python - <<'EOF'
-          import json, pathlib
-          findings = [
-            {"id": "W1", "title": "No rate limiting",          "severity": "high"},
-            {"id": "W2", "title": "Hardcoded JWT secret",      "severity": "critical"},
-            {"id": "W3", "title": "IDOR on flight plans",      "severity": "high"},
-            {"id": "W4", "title": "Unauthenticated debug",     "severity": "critical"},
-            {"id": "W5", "title": "Info disclosure in errors", "severity": "medium"},
-          ]
-          pathlib.Path("findings.json").write_text(json.dumps(findings, indent=2))
-          print(f"Exported {len(findings)} findings")
-          EOF
+        run: python -m src.gate.findings --junit security-junit.xml --out findings.json
 
       - name: Upload findings artifact
         if: always()
@@ -265,6 +257,7 @@ jobs:
               PentestNarrator, SecurityFinding, Severity
           )
           from src.agents.compliance_mapper import ComplianceMapper
+          from src.gate.findings import expected_critical_count
 
           # Load findings produced by security-tests job
           raw = json.loads(pathlib.Path("findings.json").read_text())
@@ -304,7 +297,9 @@ jobs:
           )
 
           # Quality gate — fail CI if critical count exceeds threshold
-          CRITICAL_THRESHOLD = 2   # W2 and W4 are expected (documented findings)
+          # The documented baseline decides how many criticals are expected
+          # (W2 and W4 today) - not a number written here.
+          CRITICAL_THRESHOLD = expected_critical_count()
           if matrix.critical_count > CRITICAL_THRESHOLD:
               print(f"::error::QUALITY GATE FAILED — {matrix.critical_count} critical gaps "
                     f"(threshold: {CRITICAL_THRESHOLD}). New unhandled critical finding detected.")

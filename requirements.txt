@@ -18,6 +18,9 @@ httpx>=0.27.0
 # Allure reporting
 allure-pytest>=2.13.0
 
+# Safe XML parsing — the findings gate reads the JUnit report (src/gate)
+defusedxml>=0.7.1
+
 # Code quality (optional, used in CI)
 ruff>=0.4.0
 mypy>=1.10.0
