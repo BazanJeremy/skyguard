@@ -1,0 +1,1 @@
+findings gate: 5 of 5 documented weaknesses demonstrated

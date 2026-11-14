@@ -1,0 +1,2 @@
+findings gate: error: /tmp/pytest-of-runner/pytest-0/test_unusable_report_exits_2_n0/junit.xml: cannot read (unclosed token: line 1, column 12)
+findings gate: error: /tmp/pytest-of-runner/pytest-0/test_unusable_report_exits_2_n0/missing.xml: cannot read ([Errno 2] No such file or directory: '/tmp/pytest-of-runner/pytest-0/test_unusable_report_exits_2_n0/missing.xml')

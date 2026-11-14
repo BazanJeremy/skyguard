@@ -1,0 +1,1 @@
+findings gate: error: /tmp/pytest-of-runner/pytest-0/test_report_without_any_testca0/junit.xml: no <testcase> elements found
