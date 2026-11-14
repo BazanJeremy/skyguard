@@ -118,6 +118,24 @@ class TestCommandLine:
             == EXIT_UNUSABLE
         )
 
+    def test_report_declaring_an_entity_is_refused(self, tmp_path, capsys):
+        # The report is parsed with defusedxml: an entity declaration is the
+        # opening move of an XXE or an entity-expansion attack, and a JUnit
+        # report has no use for one. Refused as unusable, never expanded.
+        report = tmp_path / "junit.xml"
+        report.write_text(
+            '<?xml version="1.0"?>'
+            '<!DOCTYPE testsuites [<!ENTITY w "TestW1NoRateLimiting">]>'
+            '<testsuites><testsuite name="pytest">'
+            '<testcase classname="tests.security.test_efb_api.&w;" name="t"/>'
+            "</testsuite></testsuites>",
+            encoding="utf-8",
+        )
+        out = tmp_path / "findings.json"
+        assert main(["--junit", str(report), "--out", str(out)]) == EXIT_UNUSABLE
+        assert "refused" in capsys.readouterr().err
+        assert not out.exists()
+
     def test_report_without_any_testcase_exits_2(self, tmp_path, capsys):
         report = _write(tmp_path, [])
         out = tmp_path / "findings.json"

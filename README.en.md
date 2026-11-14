@@ -3,7 +3,7 @@
 **AI-augmented security quality gate for critical digital systems: SkyGuard simulates the digital attack surface of a commercial aircraft and deploys three autonomous AI agents to detect threats, model risks with STRIDE, and map findings to EASA ED-202A — fully automated on every commit.**
 
 [![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
-[![Tests](https://img.shields.io/badge/tests-265%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-266%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -23,7 +23,7 @@ The AI doesn't generate test boilerplate. It **reasons about security**: assigns
 
 All three agents share the same interface contract:
 - **With `ANTHROPIC_API_KEY`:** calls `claude-sonnet-4-6`, returns AI-reasoned output
-- **Without key:** returns deterministic fallback — all 265 tests pass, CI never blocked
+- **Without key:** returns deterministic fallback — all 266 tests pass, CI never blocked
 
 ### Agent 1 — Pentest Narrator
 
@@ -110,7 +110,7 @@ Parallel (PRs + daily):
 
 | Signal | Where |
 |---|---|
-| 265 tests, 7-job CI pipeline | Badge + Actions tab |
+| 266 tests, 7-job CI pipeline | Badge + Actions tab |
 | AI agents making real QA decisions | `src/agents/` + `demo.py` output |
 | CVSS scoring, STRIDE, ED-202A | `reports/` (pre-generated) |
 | 2 real bugs caught by tests, before any manual review | Section below + commit history |
@@ -235,7 +235,7 @@ pip install -r requirements.txt
 # Full AI pipeline — fallback mode (no API key needed)
 python demo.py --save
 
-# Full test suite — 265 tests, ~10 seconds
+# Full test suite — 266 tests, ~10 seconds
 pytest tests/ -v
 ```
 
@@ -281,14 +281,14 @@ docker compose up           # EFB API → :5050 · RabbitMQ UI → :15672
 ## Test strategy
 
 ```
-265 passed, 6 skipped   (~10 seconds · no API key needed)
+266 passed, 6 skipped   (~10 seconds · no API key needed)
 ```
 
 | Layer | File(s) | Tests | What's covered |
 |---|---|---|---|
 | Protocol | `tests/protocol/` | 82 | ARINC 429 encode/decode, BNR, parity, 4 injectors; ACARS parser, 6 attack builders |
 | Fuzzing | `tests/fuzzing/` | 27 | Hypothesis: parser never crashes, return type invariant, idempotence, batch consistency |
-| Security | `tests/security/` | 82 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration — and the findings gate that derives the CI findings from those results |
+| Security | `tests/security/` | 83 | EFB API contract, RBAC, W1–W5 detection, injection probes, IDOR enumeration — and the findings gate that derives the CI findings from those results |
 | Agents | `tests/agents/test_agents.py` | 74 | Output contracts, fallback behaviour, edge cases, Markdown rendering, pipeline integration |
 | Live (skipped) | `tests/agents/test_agents.py` | 6 | Claude API call validation — activated with `ANTHROPIC_API_KEY` **and** `RUN_LIVE_API_TESTS=1`; the key alone is ignored by the suite |
 
@@ -338,7 +338,7 @@ skyguard/
 ├── tests/
 │   ├── protocol/                     # 82 tests — ARINC 429 + ACARS
 │   ├── fuzzing/                      # 27 tests — Hypothesis property-based
-│   ├── security/                     # 82 tests — EFB attack surface + findings gate
+│   ├── security/                     # 83 tests — EFB attack surface + findings gate
 │   └── agents/                       # 74 tests — AI agent contracts
 ├── reports/                          # pre-generated AI reports (checked in)
 │   ├── pentest-report.md

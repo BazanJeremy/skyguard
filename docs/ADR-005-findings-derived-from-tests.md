@@ -26,6 +26,8 @@ The baseline (id, title, severity) is declared once, in that module. The critica
 
 Exit codes: 0 baseline confirmed, 1 deviation, 2 the report is unusable. A crash exits 2, never 1.
 
+The report is parsed with `defusedxml`. It is written by pytest in the same job, so it is not hostile input today; but the first version of this module used the standard `xml` library, and the project's own Semgrep scan flagged it on the pull request (two `use-defused-xml` errors). Measured before the change: a report declaring an entity was expanded and read as a deviation (exit 1). It is now refused as unusable (exit 2). This adds one runtime dependency to a completed project — accepted because it is the remediation of a finding raised by the project's own scanner.
+
 ## Options Considered
 
 1. **Derive the findings from the test results** — the gate now depends on evidence and can fail. Costs one small module and its tests. **Chosen.**

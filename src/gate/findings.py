@@ -14,6 +14,9 @@ the agents, and into a gate: the run deviates from the baseline when
 
 The baseline below is the one place the weaknesses are declared.
 
+The report is parsed with ``defusedxml``: it comes from the same CI job, but
+a gate should not be the place where an XML entity gets expanded.
+
 Exit codes: 0 baseline confirmed, 1 deviation, 2 the report is unusable.
 An unexpected crash exits 2 as well, never 1.
 """
@@ -25,9 +28,11 @@ import json
 import re
 import sys
 import traceback
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import defusedxml.ElementTree as ET
+from defusedxml import DefusedXmlException
 
 EXIT_OK = 0
 EXIT_DEVIATION = 1
@@ -64,6 +69,11 @@ def evaluate(junit_path: str | Path) -> GateResult:
     path = Path(junit_path)
     try:
         root = ET.parse(path).getroot()
+    except DefusedXmlException as exc:
+        # An entity or external reference in a JUnit report: never expanded.
+        raise UnusableReportError(
+            f"{path}: refused, the report declares XML entities ({type(exc).__name__})"
+        ) from exc
     except (ET.ParseError, OSError) as exc:
         raise UnusableReportError(f"{path}: cannot read ({exc})") from exc
 

@@ -3,7 +3,7 @@
 **Quality gate sécurité augmenté par l'IA pour systèmes numériques critiques : SkyGuard simule la surface d'attaque des systèmes numériques d'un avion commercial, puis rejoue à chaque commit un threat modeling STRIDE assisté, un scoring des risques et une traçabilité réglementaire ED-202A.**
 
 [![CI](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml/badge.svg)](https://github.com/BazanJeremy/skyguard/actions/workflows/security-pipeline.yml)
-[![Tests](https://img.shields.io/badge/tests-265%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-266%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?logo=python)](requirements.txt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -54,7 +54,7 @@ Les trois couches simulées produisent des *findings* de sécurité (contrat com
 
 | Signal | Où |
 |---|---|
-| 265 tests, pipeline CI à 7 jobs | Badge + onglet Actions |
+| 266 tests, pipeline CI à 7 jobs | Badge + onglet Actions |
 | Des agents IA qui prennent de vraies décisions QA | `src/agents/` + sortie de `demo.py` |
 | Scoring CVSS, STRIDE, ED-202A | `reports/` (pré-générés) |
 | 2 bugs réels attrapés par les tests, avant toute revue manuelle | [version anglaise](README.en.md) + historique de commits |
@@ -90,13 +90,13 @@ Le correctif se démontre en une variable d'environnement : `FLASK_ENV=productio
 | W4 | Endpoint `/debug` non authentifié | A05 | **9.1** | SO-3 : jetons + secret exposés |
 | W5 | Traces d'exécution dans les réponses | A09 | 5.3 | SO-6 : facilite l'exploitation |
 
-**Couverture des tests** — 265 passés, 6 ignorés (~10 s, sans clé API) :
+**Couverture des tests** — 266 passés, 6 ignorés (~10 s, sans clé API) :
 
 | Couche | Tests |
 |---|---|
 | Protocole (ARINC 429 + ACARS) | 82 |
 | Fuzzing (Hypothesis, 50 000+ cas par run) | 27 |
-| Sécurité (API EFB, W1–W5, gate des findings) | 82 |
+| Sécurité (API EFB, W1–W5, gate des findings) | 83 |
 | Agents IA (contrats, fallback, rendu) | 74 |
 
 ## Stack technique
@@ -123,7 +123,7 @@ pip install -r requirements.txt
 # Pipeline IA complet — mode fallback, aucune clé requise
 python demo.py --save
 
-# Suite complète — 265 tests, ~10 s
+# Suite complète — 266 tests, ~10 s
 python -m pytest
 ```
 
