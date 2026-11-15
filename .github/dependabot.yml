@@ -13,6 +13,12 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # The requirements here are ranges (>=). By default Dependabot raises every
+    # lower bound to the latest release, which rewrites "the oldest version this
+    # project supports" into "the newest one published". With this strategy a
+    # requirement is left alone while it already allows the new release, and is
+    # only changed when it excludes it (an exact pin, or an upper bound).
+    versioning-strategy: increase-if-necessary
     groups:
       python:
         patterns: ["*"]
