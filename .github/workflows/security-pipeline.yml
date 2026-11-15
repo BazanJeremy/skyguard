@@ -30,6 +30,11 @@ env:
   PYTHON_DEFAULT: "3.12"
   ALLURE_VERSION: "2.27.0"
 
+# Least privilege: jobs only read the repository. A job that needs more
+# declares it itself.
+permissions:
+  contents: read
+
 jobs:
 
   # ────────────────────────────────────────────────────────────────────────────

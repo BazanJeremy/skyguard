@@ -19,6 +19,11 @@ on:
 env:
   PYTHON_DEFAULT: "3.12"
 
+# Least privilege: jobs only read the repository. A job that needs more
+# declares it itself.
+permissions:
+  contents: read
+
 jobs:
 
   # ────────────────────────────────────────────────────────────────────────────
